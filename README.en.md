@@ -181,11 +181,15 @@ Two measurements that qualify that 2.85e-4 headline:
   8e-27 A/cm² point at V = 0 is excluded). Recomputing the maximum inside the |J| > 1e-3 gate
   used by every other relative metric here (10 points) gives **1.60e-6**, straight from
   [data/case5_sesame_crosscheck.csv](data/case5_sesame_crosscheck.csv).
-- **The full-sweep maximum drifts with the interpreter.** Within one CI run: 9.15e-5 on
-  Python 3.10 and 3.13, 2.85e-4 on 3.12 (matching the committed value). The difference sits at
-  \|J\| ≈ 1.7e-7 A/cm², i.e. solver-noise last digits amplified by a relative measure; the
-  median agrees across all three to 1.292e-6 (relative difference ~1e-5), and
-  `agree_to_3_digits` is display-only — no assertion depends on it. **No criterion changes.**
+- **The full-sweep maximum is not version-determined; it flips between two values.**
+  Run 39049024057 (before case 7): 9.15e-5 on 3.10 and 3.13, 2.85e-4 on 3.12.
+  Run 39052802145 (with case 7): **2.85e-4** on 3.10 and **9.15e-5** on 3.12 and 3.13 —
+  the same interpreter took the other run's value, while each of the two values reproduces
+  digit for digit. So it is *which node wins the argmax* at |J| ≈ 1.7e-7 A/cm² flipping in the
+  last digits, not a systematic difference. The median agrees across both runs at 1.292e-6
+  (relative difference 1.2e-5) and `agree_to_3_digits` is display-only — no assertion depends
+  on it. **No criterion changes.** By contrast, case 7's profile criteria stay stable to more
+  than 7 significant digits across all three versions and this machine (technical report §6).
 
 Skips are never counted as passes: without `reference/`, the suite reports **89 passed /
 12 skipped**, and both case 5 and case 7 vanish; that state is labelled "not executed", not

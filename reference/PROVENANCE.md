@@ -74,9 +74,9 @@ J = sesame.IVcurve(sys_, voltages, out, verbose=False, tol=1e-9)
 （加入后复验：`find . -name "*.py" | wc -l` = 24，摘要逐字符一致）。
 
 按上面的裁剪之后，两条交叉对照仍然端到端跑通：`pytest -q` 本机报告
-**101 collected / 101 passed / 0 skipped**。GitHub Actions 在 Python 3.10 / 3.12 / 3.13 上
-三个 job 各自 93 / 93 / 0 的那次运行对应**案例 7 之前**的提交
-（run 39049979842）；案例 7 加入后的跨环境数字以最新一次 Actions 运行为准。
+**101 collected / 101 passed / 0 skipped**；GitHub Actions 在 Python 3.10 / 3.12 / 3.13 上
+三个 job 各自同样是 **101 / 101 / 0**，且案例 5 与案例 7 在三个版本上都实际执行
+（run 39052802145，commit `a127456`）。
 完全删除 `reference/` 会让案例 5 与案例 7 两个脚本、以及 12 项测试变成跳过
 （1 项材料适配 + 3 项端电流交叉 + 8 项剖面交叉），其余 89 项照常；
 跳过一律不计入通过（见 [`reports/acceptance-checklist.md`](../reports/acceptance-checklist.md)）。

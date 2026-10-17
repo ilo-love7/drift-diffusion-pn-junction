@@ -619,12 +619,19 @@ python -c "import csv;r=list(csv.DictReader(open('data/case5_sesame_crosscheck.c
 
 **跨环境复核（已验证，非本机推断）**：GitHub Actions 对每次 push 跑
 `pytest -q` + `scripts/run_all.py`（案例全跑）于 Python **3.10 / 3.12 / 3.13** 三个矩阵。
-加入案例 7 **之前**的那次运行（run 39049979842）三个 job 全部
-**93 collected / 93 passed / 0 skipped**，案例 5 的 Sesame 对照在三个版本上
-均实际执行（无人工跳过）；案例 7 与 8 项剖面测试加入后的 CI 数字见 `data/summary.json`
-所在提交的最新 Actions 运行，本节数字随该运行更新。依赖为各版本的最新发布版
-（3.10：numpy 2.2.6 / scipy 1.15.3；3.12、3.13：numpy 2.5.4 / scipy 1.18.1），
-说明 `requirements.txt` 的向下约束成立。墙钟只作工程参考，不作判据。
+案例 7 加入后的运行（run 39052802145，commit `a127456`）三个 job 全部
+**101 collected / 101 passed / 0 skipped**，汇总表里**七个案例逐条出现**，
+案例 5 与案例 7 的 Sesame 对照在三个版本上均实际执行（无人工跳过），
+`all_gates_passed` 三版本同为 True。依赖为各版本的最新发布版
+（3.10：numpy 2.2.6 / scipy 1.15.3 / matplotlib 3.10.9；3.12、3.13：numpy 2.5.4 /
+scipy 1.18.1 / matplotlib 3.11.2），说明 `requirements.txt` 的向下约束成立。
+
+案例 7 的剖面判据跨环境**稳定到 7 位以上有效数字**（本机 3.14 / CI 3.10 / CI 3.12·3.13）：
+`psi_max_abs_diff_V` 1.2905582e-8（相对差 ≤6.9e-8）、`density_rel_dev_eq_reverse_max`
+7.914397e-9 ↔ 7.914400e-9（相对差 4.3e-7）、`density_rel_dev_forward_bulk_max`
+1.4836630e-3（相对差 4.7e-9）、`field_rel_dev_bulk_max` 1.49970e-7（相对差 8.6e-7）。
+与之对照，案例 5 那个**全扫描展示值**在同样两次运行之间换了归属版本（见 §七-6）。
+墙钟只作工程参考，不作判据。
 
 ---
 
@@ -655,9 +662,14 @@ python -c "import csv;r=list(csv.DictReader(open('data/case5_sesame_crosscheck.c
    这个最大值的分母是 1.67e-7 A/cm² 的近零电流。同一批数据按 \|J\|>1e-3 重算
    （10 个点）最大相对偏差为 **1.60e-6**：
    `python -c "import csv;r=list(csv.DictReader(open('data/case5_sesame_crosscheck.csv',encoding='utf-8')));print(max(float(x['rel_dev']) for x in r if abs(float(x['J_self_A_cm-2']))>1e-3))"`。
-   另：该全扫描最大值**随解释器版本浮动** —— 同一次 CI 中 3.10/3.13 报 9.15e-5、3.12 报 2.85e-4，
-   属噪声末位差异被相对量放大；中位偏差三版本一致到 1.292e-6，`agree_to_3_digits` 仅为展示项、
-   无任何断言依赖，判据层面不受影响（见 §8.1 的口径说明）。
+   另：该全扫描最大值**不是版本决定的**，而是**在两个离散取值之间跳**——
+   run 39049024057（案例 7 之前）为 3.10/3.13 → 9.15e-5、3.12 → 2.85e-4；
+   run 39052802145（案例 7 之后）为 3.10 → **2.85e-4**、3.12/3.13 → **9.15e-5**，
+   即同一个 Python 版本在两次运行里拿到了对方的值。取值本身高度重复
+   （2.85148267537e-4 与 9.1540500198e-5 各自逐位重现），说明是 |J| ≈ 1.7e-7 A/cm² 的
+   近零电流处**哪个节点被选为 argmax** 在末位翻转，而非任何系统性差异；
+   中位偏差两次运行都在 1.29204e-6 ~ 1.29206e-6（相对差 1.2e-5），
+   `agree_to_3_digits` 两次都 True 且**无任何断言依赖**，判据层面不受影响（见 §六 与 §8.1 的口径说明）。
    案例 7 的逐节点相对指标按**同一原则**处理小量，两种口径都写明：密度用**排除**——
    `min(n_self, n_sesame) ≤ 1e6 cm⁻³` 的节点不进入最大值/RMS（而不是记为零偏差），
    否则耗尽边缘的玻尔兹曼尾会把除法噪声读成两码不一致；电场因为**在器件内部变号**，
