@@ -538,6 +538,13 @@ python -c "import csv;r=list(csv.DictReader(open('data/case5_sesame_crosscheck.c
 **验收统计口径**：`pytest -q` 的通过数须与收集数、跳过数一同报告（本轮 93 收集 / 93 通过 /
 0 跳过），Sesame 缺失的环境会显示 4 项跳过，此时 A6 记"未执行"而非"通过"（§1.5.4）。
 
+**跨环境复核（已验证，非本机推断）**：GitHub Actions 对每次 push 跑
+`pytest -q` + `scripts/run_all.py`（六案例全跑）于 Python **3.10 / 3.12 / 3.13** 三个矩阵，
+三个 job 全部 **93 collected / 93 passed / 0 skipped**，案例 5 的 Sesame 对照在三个版本上
+均实际执行（无人工跳过）。依赖为各版本的最新发布版（3.10：numpy 2.2.6 / scipy 1.15.3；
+3.12、3.13：numpy 2.5.4 / scipy 1.18.1），说明 `requirements.txt` 的向下约束成立。
+墙钟只作工程参考，不作判据。
+
 ---
 
 ## 七、局限（明确写出，不做无根据的外推）
@@ -557,7 +564,16 @@ python -c "import csv;r=list(csv.DictReader(open('data/case5_sesame_crosscheck.c
    场与密度剖面的逐点对照需要读取 Sesame 内部求解态，未纳入本轮。
    且对照的有效性受 §1.3 的 P4/P5 两条残余前提限制。
 6. **求解器噪声本底 ~1e-6 A/cm²**：在 \|J\|≲1e-3 A/cm² 处任何**相对**指标
-   （连续性、双码对数偏差）都失去意义，因此一律门控 \|J\|>1e-3 并另给绝对界。
+   （连续性、双码对数偏差）都失去意义，因此判据类指标一律门控 \|J\|>1e-3 并另给绝对界。
+   **例外（口径不同，必须分清）**：案例 5 的 `max_rel_dev` 是**全扫描展示值**，
+   门槛取 `|J_ref| > 1e-12`（`scripts/case5_sesame_crosscheck.py:67`），
+   目的是保留 23 点里的 22 点参与比对（只排除 V=0 的 8e-27 A/cm²），所以 2.85e-4
+   这个最大值的分母是 1.67e-7 A/cm² 的近零电流。同一批数据按 \|J\|>1e-3 重算
+   （10 个点）最大相对偏差为 **1.60e-6**：
+   `python -c "import csv;r=list(csv.DictReader(open('data/case5_sesame_crosscheck.csv',encoding='utf-8')));print(max(float(x['rel_dev']) for x in r if abs(float(x['J_self_A_cm-2']))>1e-3))"`。
+   另：该全扫描最大值**随解释器版本浮动** —— 同一次 CI 中 3.10/3.13 报 9.15e-5、3.12 报 2.85e-4，
+   属噪声末位差异被相对量放大；中位偏差三版本一致到 1.292e-6，`agree_to_3_digits` 仅为展示项、
+   无任何断言依赖，判据层面不受影响（见 §8.1 的口径说明）。
 7. 网格为几何渐变生成，未做自适应（例如按场梯度重分）；案例 4 表明 1601 节点已足够。
 
 ---
