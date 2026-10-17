@@ -61,16 +61,27 @@ J = sesame.IVcurve(sys_, voltages, out, verbose=False, tol=1e-9)
 ```
 
 `sesame` 是在运行时由
-[`scripts/case5_sesame_crosscheck.py`](../scripts/case5_sesame_crosscheck.py) 插入 `sys.path` 的；
+[`scripts/case5_sesame_crosscheck.py`](../scripts/case5_sesame_crosscheck.py) 与
+[`scripts/case7_sesame_profiles.py`](../scripts/case7_sesame_profiles.py) 插入 `sys.path` 的；
 它从未被安装，也不会被求解器本身 import，所以删掉这个目录，项目其余部分照常运行。
 可选的 MUMPS 直接法绑定（`sesame/mumps/`）未编译、未使用——Sesame 回退到 SciPy，
 交叉对照就是在这个配置下跑的。
 
-按上面的裁剪之后，交叉对照仍然端到端跑通：`pytest -q` 报告
-**93 collected / 93 passed / 0 skipped**；GitHub Actions 在 Python 3.10 / 3.12 / 3.13 上
-三个 job 各自同样是 93 / 93 / 0（案例 5 实际执行，无跳过）。
-完全删除 `reference/` 会让案例 5 与 4 项测试变成跳过，其余 89 项照常；
+案例 7 需要读取 Sesame 收敛后的**内部状态**（n、p、电位剖面）。它同样只用公开 API：
+`IVcurve` 把每个偏压点整份 pickle 成 `<prefix>_{idx}.gzip`（`sesame/solvers.py:399-406`），
+案例用 `load_sim` + `Analyzer` 取回，再用 `scaling.density` / `scaling.energy` 换算回物理单位。
+**没有为它新增或修改 `reference/` 下任何文件**，因此下面两个完整性摘要在本案例加入后仍然成立
+（加入后复验：`find . -name "*.py" | wc -l` = 24，摘要逐字符一致）。
+
+按上面的裁剪之后，两条交叉对照仍然端到端跑通：`pytest -q` 本机报告
+**101 collected / 101 passed / 0 skipped**。GitHub Actions 在 Python 3.10 / 3.12 / 3.13 上
+三个 job 各自 93 / 93 / 0 的那次运行对应**案例 7 之前**的提交
+（run 39049979842）；案例 7 加入后的跨环境数字以最新一次 Actions 运行为准。
+完全删除 `reference/` 会让案例 5 与案例 7 两个脚本、以及 12 项测试变成跳过
+（1 项材料适配 + 3 项端电流交叉 + 8 项剖面交叉），其余 89 项照常；
 跳过一律不计入通过（见 [`reports/acceptance-checklist.md`](../reports/acceptance-checklist.md)）。
+89 / 12 这个拆分是实测：临时移出 `reference/sesame` 后 `pytest -q` 报
+`89 passed, 12 skipped`，随后原样恢复。
 
 ## 再分发
 

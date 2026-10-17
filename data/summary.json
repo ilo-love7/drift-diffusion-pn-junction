@@ -27,7 +27,7 @@
       "x_p_analytic_um": 0.3028401884927944,
       "fig_band": "case1_band_diagram.png",
       "fig_profiles": "case1_profiles.png",
-      "wall_seconds": 0.6488866000145208
+      "wall_seconds": 0.5231670000066515
     }
   },
   "2": {
@@ -72,7 +72,7 @@
       "fig_ideality": "case2_ideality.png",
       "fig_partition": "case2_bias_partition.png",
       "fig_profiles": "case2_profiles.png",
-      "wall_seconds": 1.8716967000218574
+      "wall_seconds": 1.5115652999957092
     }
   },
   "3": {
@@ -118,7 +118,7 @@
       "mott_schottky_R2": 0.9997656473777818,
       "fig_reverse": "case3_reverse_iv.png",
       "fig_cv": "case3_cv_mott_schottky.png",
-      "wall_seconds": 2.2725838999904227
+      "wall_seconds": 1.7649579999851994
     }
   },
   "4": {
@@ -160,12 +160,12 @@
       },
       "order_J_0p60_last": 1.951129832616854,
       "order_W_last": 1.992841869002173,
-      "seconds_per_bias_at_3201": 0.1002495000041866,
-      "speedup_201_vs_3201": 7.022666452884916,
+      "seconds_per_bias_at_3201": 0.09236626667552628,
+      "speedup_201_vs_3201": 6.271544808806341,
       "max_newton_iters_over_grids": 10,
       "W_theory_um": 0.3331242073420738,
       "fig_conv": "case4_mesh_convergence.png",
-      "wall_seconds": 1.3160868000122719
+      "wall_seconds": 1.1956356999871787
     }
   },
   "5": {
@@ -187,11 +187,11 @@
       "J_solver_at_-0p60": 1.05769037604947e-06,
       "J_sesame_at_-0p60": 1.0576990921814213e-06,
       "max_newton_iterations": 6,
-      "seconds_self_built": 0.7705760000098962,
-      "seconds_sesame": 6.578483899997082,
-      "speed_factor": 8.537099390472317,
+      "seconds_self_built": 0.8508343000139575,
+      "seconds_sesame": 7.307125299994368,
+      "speed_factor": 8.588188440304414,
       "fig": "case5_sesame_crosscheck.png",
-      "wall_seconds": 8.322349900001427
+      "wall_seconds": 9.72304909999366
     }
   },
   "6": {
@@ -241,7 +241,145 @@
       "J_ratio_0.60": 1.541223727496116,
       "fig_models": "case6_material_models.png",
       "fig_iv": "case6_realistic_iv.png",
-      "wall_seconds": 2.5602682000026107
+      "wall_seconds": 4.250279599975329
+    }
+  },
+  "7": {
+    "module": "case7_sesame_profiles",
+    "metrics": {
+      "case": 7,
+      "name": "sesame_profile_crosscheck",
+      "n_nodes": 801,
+      "sweep_points": 23,
+      "sesame_tol": 1e-09,
+      "profile_biases": [
+        -0.6,
+        0.0,
+        0.3,
+        0.6
+      ],
+      "density_floor_cm-3": 1000000.0,
+      "field_floor_V_cm": 1000.0,
+      "bulk_edge_um": 5.0,
+      "psi_gauge_offset_V": -4.615497472353522,
+      "psi_gauge_expected_V": -4.615497472353522,
+      "gates": {
+        "psi_gauge_offset_spread_V": 1e-09,
+        "psi_gauge_expected_abs_error_V": 1e-09,
+        "psi_max_abs_diff_V": 1e-06,
+        "density_rel_dev_eq_reverse_max": 1e-06,
+        "density_rel_dev_forward_bulk_max": 0.01,
+        "field_rel_dev_bulk_max": 0.01
+      },
+      "gates_passed": {
+        "psi_gauge_offset_spread_V": true,
+        "psi_gauge_expected_abs_error_V": true,
+        "psi_max_abs_diff_V": true,
+        "density_rel_dev_eq_reverse_max": true,
+        "density_rel_dev_forward_bulk_max": true,
+        "field_rel_dev_bulk_max": true
+      },
+      "all_gates_passed": true,
+      "density_rel_dev_forward_all_max_note": "reported for transparency; not gated",
+      "mesh_check_1601_nodes": {
+        "V_+0.30": {
+          "n_rel_dev_max_801": 0.0014362355594685293,
+          "n_rel_dev_max_1601": 0.001707590483552965,
+          "p_rel_dev_max_801": 0.0014836630213197193,
+          "p_rel_dev_max_1601": 0.0018825928363128178,
+          "psi_max_abs_diff_V_1601": 1.2513293179416962e-09,
+          "E_rel_dev_bulk_max_1601": 1.875421221635219e-09
+        },
+        "V_+0.60": {
+          "n_rel_dev_max_801": 0.0008499105315704952,
+          "n_rel_dev_max_1601": 0.001756758838372915,
+          "p_rel_dev_max_801": 5.096332769933116e-06,
+          "p_rel_dev_max_1601": 5.0850493363738285e-06,
+          "psi_max_abs_diff_V_1601": 1.2909288665818863e-08,
+          "E_rel_dev_bulk_max_1601": 1.504300217068018e-07
+        }
+      },
+      "per_bias": [
+        {
+          "bias_V": -0.6,
+          "newton_iterations": 0,
+          "gauge_offset_V": -4.615497472353522,
+          "psi_max_abs_diff_V": 2.0462409544563798e-10,
+          "n_rel_dev_max": 5.436611602193198e-09,
+          "n_rel_dev_bulk_max": 5.436611602193198e-09,
+          "n_rel_dev_rms": 9.716830301916978e-10,
+          "n_argmax_x_um": 60.09317539512401,
+          "p_rel_dev_max": 7.91439666554632e-09,
+          "p_rel_dev_bulk_max": 7.91439666554632e-09,
+          "p_rel_dev_rms": 2.900236049460361e-09,
+          "p_argmax_x_um": 60.199052525928224,
+          "E_rel_dev_max": 3.207204599675606e-09,
+          "E_rel_dev_bulk_max": 3.207204599675606e-09,
+          "E_max_abs_diff_V_cm": 2.071130438707769e-05
+        },
+        {
+          "bias_V": 0.0,
+          "newton_iterations": 4,
+          "gauge_offset_V": -4.615497472353522,
+          "psi_max_abs_diff_V": 1.1207257344381105e-10,
+          "n_rel_dev_max": 4.335163626717831e-09,
+          "n_rel_dev_bulk_max": 4.335163626717831e-09,
+          "n_rel_dev_rms": 1.1791631572474315e-09,
+          "n_argmax_x_um": 60.14811443901054,
+          "p_rel_dev_max": 4.335149654127145e-09,
+          "p_rel_dev_bulk_max": 4.335149654127145e-09,
+          "p_rel_dev_rms": 1.5281131679877742e-09,
+          "p_argmax_x_um": 60.14811443901054,
+          "E_rel_dev_max": 2.375682097963398e-09,
+          "E_rel_dev_bulk_max": 2.375682097963398e-09,
+          "E_max_abs_diff_V_cm": 1.5417863323818892e-05
+        },
+        {
+          "bias_V": 0.3,
+          "newton_iterations": 13,
+          "gauge_offset_V": -4.615497472353522,
+          "psi_max_abs_diff_V": 6.52125575761886e-11,
+          "n_rel_dev_max": 0.0014362355594685293,
+          "n_rel_dev_bulk_max": 0.0014362355594685293,
+          "n_rel_dev_rms": 0.00014547357652756933,
+          "n_argmax_x_um": 79.63693725422242,
+          "p_rel_dev_max": 0.0014836630213197193,
+          "p_rel_dev_bulk_max": 0.0014836630213197193,
+          "p_rel_dev_rms": 0.000125261144473595,
+          "p_argmax_x_um": 55.10716007483445,
+          "E_rel_dev_max": 1.8730064539340673e-09,
+          "E_rel_dev_bulk_max": 1.8730064539340673e-09,
+          "E_max_abs_diff_V_cm": 1.2000476999673992e-05
+        },
+        {
+          "bias_V": 0.6,
+          "newton_iterations": 0,
+          "gauge_offset_V": -4.615497472353522,
+          "psi_max_abs_diff_V": 1.290558188093982e-08,
+          "n_rel_dev_max": 0.0008499105315704952,
+          "n_rel_dev_bulk_max": 2.2313764653751e-05,
+          "n_rel_dev_rms": 3.56557717381102e-05,
+          "n_argmax_x_um": 119.61558987861169,
+          "p_rel_dev_max": 5.096332769933116e-06,
+          "p_rel_dev_bulk_max": 3.036498867389192e-06,
+          "p_rel_dev_rms": 4.974973719732998e-07,
+          "p_argmax_x_um": 4.612921456640962,
+          "E_rel_dev_max": 3.324917467943944e-07,
+          "E_rel_dev_bulk_max": 1.4997004872824407e-07,
+          "E_max_abs_diff_V_cm": 0.0008024921826290665
+        }
+      ],
+      "seconds_sesame": 10.5463591000007,
+      "seconds_self_built_profiles": 0.9492576000047848,
+      "psi_max_abs_diff_V": 1.290558188093982e-08,
+      "psi_gauge_offset_spread_V": 0.0,
+      "density_rel_dev_eq_reverse_max": 7.91439666554632e-09,
+      "density_rel_dev_forward_bulk_max": 0.0014836630213197193,
+      "density_rel_dev_forward_all_max": 0.0014836630213197193,
+      "field_rel_dev_bulk_max": 1.4997004872824407e-07,
+      "psi_gauge_expected_abs_error_V": 0.0,
+      "fig": "case7_sesame_profiles.png",
+      "wall_seconds": 31.9214599999832
     }
   }
 }

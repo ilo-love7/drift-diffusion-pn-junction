@@ -10,11 +10,11 @@ A from-scratch 1-D steady-state drift-diffusion–Poisson solver (finite volume,
 Scharfetter–Gummel links, analytic sparse Jacobian, damped Newton with adaptive bias
 continuation), verified against closed-form semiconductor theory **and** against an
 independent third-party device simulator (NIST Sesame 2.0) — numpy/scipy only, no GPU, no
-build chain, whole verification suite reproducible in about 20 seconds.
+build chain, whole verification suite reproducible in about 50 seconds.
 
 > 中文版见 [README.md](README.md)（仓库主页）。
 
-**93 collected / 93 passed / 0 skipped** (≈10 s) · 6 verification cases (≈18 s) · green on CI for Python 3.10 / 3.12 / 3.13 · MIT (the vendored Sesame part stays 3-clause BSD)
+**101 collected / 101 passed / 0 skipped** (≈15 s) · 7 verification cases (≈51 s) · green on CI for Python 3.10 / 3.12 / 3.13 · MIT (the vendored Sesame part stays 3-clause BSD)
 
 ---
 
@@ -26,10 +26,11 @@ build chain, whole verification suite reproducible in about 20 seconds.
 | 2 | Forward I-V, 0 → 0.70 V (51 points) | **≤ 4 Newton iterations per point**, weighted residual 9.68e-9; ideality 1.58 (low bias) → 1.12 (mid bias); thermal voltage recovered from the ln J – V_j slope within **3.1 %** | ✅ |
 | 3 | Reverse branch + C-V, 0 → −0.70 V (71 points) | depletion width from ε/C within **1.67 %** of the analytic value; Mott–Schottky R² = 0.99977 (effective doping 6.5 % off); SRH generation reaches 0.99999 of its theoretical ceiling | ✅ |
 | 4 | Mesh independence, 201 → 3201 nodes | observed order **1.95 (J@0.60) / 1.99 (W)**; 1601 vs 3201 differ by 1.8e-5 / 3.3e-5. *Boundary of validity: this device and this mesh template.* The J@0.30 difference has dropped to the 7.2e-8 solver noise floor, so its order is distorted (4.52) and is **not** used as a criterion. | ✅ 2nd order |
-| 5 | Cross-check vs **NIST Sesame 2.0**, identical inputs, 23 bias points | max relative deviation of terminal current **2.85e-4**, median 1.29e-6; J(0.60 V) = −0.8014472 vs −0.8014469 A/cm²; this solver is **8.5×** faster on this machine. *Covers terminal current only; both codes share the same model set, so this layer says nothing about model completeness — reference truth stays with L1.* | ✅ |
+| 5 | Cross-check vs **NIST Sesame 2.0**, identical inputs, 23 bias points | max relative deviation of terminal current **2.85e-4**, median 1.29e-6; J(0.60 V) = −0.8014472 vs −0.8014469 A/cm²; this solver is **8.6×** faster on this machine. *This case compares the terminal current alone — the internal profiles are compared in case 7; both codes share the same model set, so this layer says nothing about model completeness, and reference truth stays with L1.* | ✅ |
 | 6 | Realistic silicon (Arora mobility + Slotboom band-gap narrowing) | V_bi drops **21.3 mV**, local n_i ×1.60, J_s ×1.90, J(0.60 V) ×1.54; equilibrium invariant stays at 7.99e-14 | ✅ |
-| 7 | Unit tests | **93 collected / 93 passed / 0 skipped**, incl. analytic-vs-finite-difference Jacobian, a band-gap-narrowing generalised-SG regression test, and an exact-degeneracy assertion when narrowing is absent | ✅ |
-| 8 | Reproduction cost | all six cases **≈18 s** (≈8 s with `--fast`); every product is a local CSV/PNG/JSON | ✅ |
+| 7 | Cross-check of the **internal profiles** vs **NIST Sesame 2.0** (same node array, same inputs, 4 biases: −0.60 / 0 / 0.30 / 0.60 V) | max potential difference **1.29e-8 V**; max relative density deviation **7.91e-9** at equilibrium and reverse bias; bulk-region field deviation **1.50e-7**. The two potentials differ by the constant **−4.615497472 V**, which matches the analytic intrinsic-level reference **bit for bit** (error 0.0) and does not drift with bias (spread 0.0). Forward density deviation 1.48e-3, peaking *at the contact* (x = 119.6 µm); refining the mesh to 1601 nodes makes it larger, not smaller (8.50e-4 → 1.76e-3) — a contact/scheme premise difference, not a resolution limit | ✅ |
+| 8 | Unit tests | **101 collected / 101 passed / 0 skipped**, incl. analytic-vs-finite-difference Jacobian, a band-gap-narrowing generalised-SG regression test, an exact-degeneracy assertion when narrowing is absent, and 8 Sesame profile-agreement assertions | ✅ |
+| 9 | Reproduction cost | all seven cases **≈51 s** (≈8 s with `--fast`); every product is a local CSV/PNG/JSON | ✅ |
 
 Scale check, Si p-n junction (N_D = 1e17, N_A = 1e16 cm⁻³, 300 K):
 V_bi = 0.78013 V, W(0) = 0.3331 µm, E_max(0) = 4.68e4 V/cm,
@@ -45,6 +46,10 @@ L_n = 5.91 µm, L_p = 3.52 µm, J_s = 7.87e-11 A/cm².
 |---|---|---|---|
 | ![profiles](figures/case1_profiles.png) | ![bands](figures/case1_band_diagram.png) | ![cross](figures/case5_sesame_crosscheck.png) | ![realistic](figures/case6_realistic_iv.png) |
 
+| Sesame profile cross-check: potential / density / field at 0.60 V |
+|---|
+| ![sesame-profiles](figures/case7_sesame_profiles.png) |
+
 > Figure text is English: matplotlib uses the default font, so Chinese labels would render as
 > boxes in a clean container without a CJK font.
 
@@ -55,10 +60,10 @@ L_n = 5.91 µm, L_p = 3.52 µm, J_s = 7.87e-11 A/cm².
 ```bash
 pip install -r requirements.txt
 
-python scripts/run_all.py              # all six verification cases, ≈18 s -> data/ figures/ + summary table
-python scripts/run_all.py --fast       # skip the mesh study and the Sesame cross-check, ≈8 s
+python scripts/run_all.py              # all seven verification cases, ≈51 s -> data/ figures/ + summary table
+python scripts/run_all.py --fast       # skip the mesh study and the Sesame cross-checks, ≈8 s
 python scripts/run_all.py --only 2 5   # selected cases only
-python -m pytest -q                    # 93 tests, ≈10 s
+python -m pytest -q                    # 101 tests, ≈15 s
 ```
 
 Each case also runs standalone and prints its metrics, e.g. `python scripts/case1_equilibrium.py`.
@@ -67,7 +72,7 @@ into `sys.path` themselves, so a plain clone runs everything with no install ste
 
 Products: `data/metrics_caseN.json` (structured metrics — every number quoted here is read
 back from these files), `data/caseN_*.csv` (per-bias / per-node data), `figures/caseN_*.png`
-(12 figures), `data/summary.json` (rollup with per-case wall clock).
+(13 figures), `data/summary.json` (rollup with per-case wall clock).
 
 ## Using the library
 
@@ -158,7 +163,7 @@ checked criterion by criterion in
 |---|---|---|---|
 | **L1** | analytic invariants: zero equilibrium current, flat quasi-Fermi levels, `np = n_i²`, V_bi / W / E_max against closed forms | **mandatory floor** | model completeness — it certifies the discretisation, not the physics you chose |
 | **L2** | mesh independence over 5 grids, observed order ≈ 2 | **mandatory floor** | that the converged limit is the *right* answer |
-| **L3** | terminal current vs NIST Sesame 2.0 on identical inputs, 23 bias points | bonus | any independent ground truth — **independent code ≠ independent validation chain**; and because both codes share the same model set, this layer has zero power over model completeness |
+| **L3** | vs NIST Sesame 2.0 on identical inputs: terminal current over 23 bias points (case 5) **plus the internal profiles** — potential, n, p, electric field — at 4 biases (case 7) | bonus | any independent ground truth — **independent code ≠ independent validation chain**; and because both codes share the same model set, this layer has zero power over model completeness |
 
 Gate: an L1 or L2 failure means the deliverable fails and L3 cannot compensate; L3 missing
 alone means "external consistency unproven", not "rejected". A cross-check is only
@@ -182,8 +187,42 @@ Two measurements that qualify that 2.85e-4 headline:
   median agrees across all three to 1.292e-6 (relative difference ~1e-5), and
   `agree_to_3_digits` is display-only — no assertion depends on it. **No criterion changes.**
 
-Skips are never counted as passes: without `reference/`, the suite reports 89 passed /
-4 skipped and case 5 vanishes; that state is labelled "not executed", not "passed".
+Skips are never counted as passes: without `reference/`, the suite reports **89 passed /
+12 skipped**, and both case 5 and case 7 vanish; that state is labelled "not executed", not
+"passed".
+
+### Case 7: extending L3 from the terminal current to the internal profiles
+
+Case 5 proves that two codes agree on one scalar per bias point. Different internal
+distributions can integrate to the same scalar, so that layer never touched the *shape* of
+the solution. Case 7 reads Sesame's converged internal state back (`IVcurve` pickles every
+sweep point as `.gzip`; `load_sim` + `Analyzer` return n, p and potential) and compares it
+node-by-node on the **same mesh array**. It required no change to the vendored code — only its
+public API — so the byte-exact SHA-256 promise above still holds.
+
+Six thresholds are declared in `GATES` before any number is read off them, but they answer
+four different questions rather than one "error < x":
+
+- **The potential zero is a gauge, not physics.** Sesame references its potential to the
+  intrinsic level of the homogeneous neutral region, this solver to its own electrostatic
+  potential, so the two must differ by the constant
+  `−(χ + E_g/2 + (V_t/2)·ln(N_c/N_v))`. Measured offset: −4.615497472 V, agreeing with that
+  analytic value **to 0.0**, and invariant across all four biases (spread 0.0). After removing
+  the constant, the node-wise potential difference is at most **1.29e-8 V**. This criterion is
+  what makes the comparison a comparison of the same physical quantity rather than of two
+  independently drifting curves.
+- **Equilibrium and reverse bias are precision:** max relative density deviation **7.91e-9**,
+  field **3.2e-9** — the same order as the case-1 L1 invariants. Two independent
+  implementations drive the same thermal-equilibrium solution to the noise floor.
+- **Forward bias is a premise difference, and it is localised:** density deviation 1.48e-3
+  (0.30 V) and 8.5e-4 (0.60 V), peaking at the **p-contact** (x = 119.6 µm); refining to 1601
+  nodes makes that point *worse* (8.50e-4 → 1.76e-3) while the bulk stays at 2.2e-5. So it is
+  the contact model (Dirichlet dual potentials vs `contact_S` surface velocities), not the
+  discretisation. One of the 8 new tests asserts "contact deviation > 10× bulk deviation",
+  which turns that sentence into an executable criterion instead of explanatory prose.
+- **The field is precision:** with the identical edge-difference stencil (Sesame does not
+  output field, so both codes must difference their own potential), bulk relative deviation
+  **1.50e-7**, max absolute difference 8.0e-4 V/cm.
 
 ### Third-party code: version lock and raw data
 
@@ -196,8 +235,9 @@ repository ([reference/PROVENANCE.md](reference/PROVENANCE.md)):
 | how obtained | vendored, **not pip-installed** (`pip show sesame` → not found), so no version ambiguity for a reviewer |
 | modifications | none in any retained file; `LICENSE.rst` / `AUTHORS.rst` and per-file copyright headers verbatim. `doc/`, `examples/`, `test_suite/` (no solver code) were removed to keep the repository near 4 MB |
 | integrity digest | 24 shipped `.py` files → SHA-256 `fa1698474ee02d89c632761742c122df5e8f3a13cbe0f68fdcf9f8a481f1ee30`; complete pre-trim copy (44 `.py`) → `b1b093cf389a487b8d249b9b782e6343ca17aeb36272c94054ccca851cca9cb0` |
-| raw point data | [data/case5_sesame_crosscheck.csv](data/case5_sesame_crosscheck.csv) — 23 rows (`V_V`, `J_self_A_cm-2`, `J_sesame_A_cm-2`, `rel_dev`), so the deviation is recomputable without running any solver |
-| dependency isolation | the solver core never imports Sesame; only `devices.sesame_system()` and the case-5 script do |
+| raw point data | [data/case5_sesame_crosscheck.csv](data/case5_sesame_crosscheck.csv) — 23 rows (`V_V`, `J_self_A_cm-2`, `J_sesame_A_cm-2`, `rel_dev`), so the deviation is recomputable without running any solver; [data/case7_sesame_profiles.csv](data/case7_sesame_profiles.csv) — per-node profiles (801 rows per bias: x, n / p / potential from each code, field from each code), so every deviation quoted above is recomputable offline |
+| dependency isolation | the solver core never imports Sesame; only `devices.sesame_system()` and the case-5/7 scripts do |
+| was the vendored code touched | no. Case 7 reads Sesame's internal state through its public API (`IVcurve` → `load_sim` → `Analyzer`); nothing under `reference/` was added or modified, so the SHA-256 digest above still holds after case 7 was added |
 
 ```bash
 # check the vendored reference against the digest above
@@ -260,10 +300,14 @@ junctions) is listed in [reports/technical-report.md](reports/technical-report.m
 Other declared limits: steady state, 1-D, uniform lifetime, a single mid-gap SRH level, no
 Auger / tunnelling / Schottky recombination, no displacement current (so no AC and no C-V
 frequency dispersion — case 3's capacitance is a quasi-static dQ/dV); abrupt doping at x_j;
-the 0.70 V sweep stays on the weak-injection side; the Sesame comparison covers terminal
-current only (comparing fields and densities would require reading Sesame's solved state);
-and since the residual floor is ≈3e-9, every *relative* metric is gated on |J| > 1e-3 A/cm² —
-below that you are reading solver noise, not physics.
+the 0.70 V sweep stays on the weak-injection side. The Sesame comparison now covers the
+internal profiles as well as the terminal current, but only for this one abrupt junction, this
+one parameter set and those 4 biases; Sesame does not output field, so the fields compared in
+case 7 are each code's own difference of its own potential. And since the residual floor is
+≈3e-9, every *relative* metric is gated on magnitude — |J| > 1e-3 A/cm², and in case 7
+densities below 1e6 cm⁻³ are **excluded** from the ratio rather than counted as zero error
+(otherwise the depletion-edge Boltzmann tails read as disagreement), while the field, which
+**changes sign** inside the device, uses a floored denominator `max(|E|, 1e3 V/cm)`.
 
 The second route named in the original project brief (FEniCS finite elements) was not used:
 1-D finite volume with SG fluxes already delivers provable equilibrium exactness and a clean
@@ -278,12 +322,12 @@ src/p5dd/          constants · bernoulli · material (Arora / Slotboom / SRH) �
                    adapters) · solver (residual + analytic Jacobian + damped Newton +
                    continuation) · theory (V_bi, depletion, Shockley, ideality) · analysis
                    (peak field, depletion charge, C = dQ/dV, Mott-Schottky) · viz (Agg styling)
-scripts/           case1..case6 + run_all.py
-tests/             93 tests, session-scoped solved fixtures
+scripts/           case1..case7 + run_all.py
+tests/             101 tests, session-scoped solved fixtures
 reports/           technical-report.md · acceptance-checklist.md (both in Chinese)
-data/ figures/     committed metrics, per-point CSV, 12 PNG
+data/ figures/     committed metrics, per-point CSV, 13 PNG
 reference/         vendored Sesame 2.0 (trimmed; retained files unmodified) + PROVENANCE.md
-.github/workflows/ CI: test suite + all six cases on Python 3.10 / 3.12 / 3.13
+.github/workflows/ CI: test suite + all seven cases on Python 3.10 / 3.12 / 3.13
 ```
 
 ## License

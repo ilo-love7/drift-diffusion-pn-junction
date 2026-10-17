@@ -9,7 +9,7 @@
 从零实现的 1D 稳态漂移-扩散–泊松求解器：有限体积 + Scharfetter–Gummel _link_、解析稀疏
 雅可比、阻尼 Newton + 自适应偏压延拓。验证走两条独立路线——**闭式半导体理论**（L1/L2）和
 **第三方器件模拟器 NIST Sesame 2.0**（L3）。只用 numpy/scipy，无 GPU、无编译链，
-整套验证本地一条命令约 20 秒复现。
+整套验证本地一条命令约 50 秒复现。
 
 > **English (full version in [README.en.md](README.en.md)):** a from-scratch 1-D
 > drift-diffusion–Poisson solver for an Si p-n junction, verified against closed-form theory and
@@ -17,7 +17,7 @@
 > out-of-scope structures (MOS, heterojunctions, transients…) are declared *not built, not
 > verified*.
 
-**93 collected / 93 passed / 0 skipped**（≈10 s）· 六个验证案例（≈18 s）· Python 3.10 / 3.12 / 3.13 全部在 CI 上通过 · MIT（其中 vendored Sesame 部分仍为 3-clause BSD）
+**101 collected / 101 passed / 0 skipped**（≈15 s）· 七个验证案例（≈51 s）· Python 3.10 / 3.12 / 3.13 全部在 CI 上通过 · MIT（其中 vendored Sesame 部分仍为 3-clause BSD）
 
 ---
 
@@ -29,10 +29,11 @@
 | 2 | 正偏 I-V，0 → 0.70 V（51 点） | 每点 **≤ 4 次 Newton 迭代**，加权残差 9.68e-9；理想因子低偏 1.58 → 中偏 1.12；由 ln J – V_j 斜率反演热电压，误差 **3.1 %** | ✅ |
 | 3 | 反偏分支 + C-V，0 → −0.70 V（71 点） | 由 ε/C 反推的耗尽层宽与解析值最大偏差 **1.67 %**；Mott–Schottky R² = 0.99977（有效掺杂偏 6.5 %）；SRH 产生速率达限速值的 0.99999 | ✅ |
 | 4 | 网格无关性，201 → 3201 节点 | 观测阶数 **1.95（J@0.60）/ 1.99（W）**；1601 与 3201 差 1.8e-5 / 3.3e-5。*适用边界：本器件 + 本网格模板。* J@0.30 的差值已落到 7.2e-8 的求解器噪声底，阶数被失真（4.52），**不作为判据**。 | ✅ 二阶 |
-| 5 | 与 **NIST Sesame 2.0** 交叉对照（输入完全一致，23 个偏压点） | 端电流最大相对偏差 **2.85e-4**、中位 1.29e-6；J(0.60 V) = −0.8014472 vs −0.8014469 A/cm²；本机本求解器快 **8.5 倍**。*只覆盖端电流；两码共用同一套模型，所以这一层对"模型是否完备"没有任何发言权，reference truth 仍留在 L1。* | ✅ |
+| 5 | 与 **NIST Sesame 2.0** 交叉对照（输入完全一致，23 个偏压点） | 端电流最大相对偏差 **2.85e-4**、中位 1.29e-6；J(0.60 V) = −0.8014472 vs −0.8014469 A/cm²；本机本求解器快 **8.6 倍**。*本案例只比端电流这一个标量，内部剖面见案例 7；两码共用同一套模型，所以这一层对"模型是否完备"没有任何发言权，reference truth 仍留在 L1。* | ✅ |
 | 6 | 真实硅物性（Arora 迁移率 + Slotboom 带隙窄化） | V_bi 下降 **21.3 mV**，局部 n_i ×1.60，J_s ×1.90，J(0.60 V) ×1.54；平衡不变量仍是 7.99e-14 | ✅ |
-| 7 | 单元测试 | **93 collected / 93 passed / 0 skipped**，含解析 vs 有限差分雅可比、带隙窄化下的广义 SG 回归测试、无窄化时的严格退化断言 | ✅ |
-| 8 | 复现成本 | 六案例 **≈18 s**（`--fast` ≈8 s）；产物全部是本地 CSV/PNG/JSON | ✅ |
+| 7 | 与 **NIST Sesame 2.0** 的**内部剖面**对照（同一网格、同一输入，4 个偏压点：−0.60 / 0 / 0.30 / 0.60 V） | 电位最大差 **1.29e-8 V**；平衡/反偏密度最大相对偏差 **7.91e-9**；体区电场相对偏差 **1.50e-7**。两码电位零点相差一个常数 **−4.615497472 V**，与解析的"本征能级参考"预测**逐位相同**（误差 0.0）且随偏压不漂移（spread 0.0）。正偏密度偏差 1.48e-3，最大点落在**接触处**（x = 119.6 µm），网格加密到 1601 节点后不减反增（8.50e-4 → 1.76e-3）——是接触/格式前提之差，不是分辨率不足 | ✅ |
+| 8 | 单元测试 | **101 collected / 101 passed / 0 skipped**，含解析 vs 有限差分雅可比、带隙窄化下的广义 SG 回归测试、无窄化时的严格退化断言、以及 8 项 Sesame 剖面对照断言 | ✅ |
+| 9 | 复现成本 | 七案例 **≈51 s**（`--fast` ≈8 s）；产物全部是本地 CSV/PNG/JSON | ✅ |
 
 尺度校核（Si p-n 结，N_D = 1e17、N_A = 1e16 cm⁻³，300 K）：
 V_bi = 0.78013 V，W(0) = 0.3331 µm，E_max(0) = 4.68e4 V/cm，
@@ -48,6 +49,10 @@ L_n = 5.91 µm，L_p = 3.52 µm，J_s = 7.87e-11 A/cm²。
 |---|---|---|---|
 | ![profiles](figures/case1_profiles.png) | ![bands](figures/case1_band_diagram.png) | ![cross](figures/case5_sesame_crosscheck.png) | ![realistic](figures/case6_realistic_iv.png) |
 
+| Sesame 内部剖面对照：0.60 V 处的电位 / 密度 / 电场 |
+|---|
+| ![sesame-profiles](figures/case7_sesame_profiles.png) |
+
 > 图内文字目前是英文（matplotlib 用默认字体，避免容器里缺中文字体变方框）。需要中文版图可以自行换字体重渲染，见「快速开始」。
 
 ---
@@ -57,10 +62,10 @@ L_n = 5.91 µm，L_p = 3.52 µm，J_s = 7.87e-11 A/cm²。
 ```bash
 pip install -r requirements.txt
 
-python scripts/run_all.py              # 六个案例全跑，≈18 s -> data/ figures/ + 汇总表
+python scripts/run_all.py              # 七个案例全跑，≈51 s -> data/ figures/ + 汇总表
 python scripts/run_all.py --fast       # 跳过网格研究与 Sesame 对照，≈8 s
 python scripts/run_all.py --only 2 5   # 只跑指定案例
-python -m pytest -q                    # 93 项测试，≈10 s
+python -m pytest -q                    # 101 项测试，≈15 s
 ```
 
 每个案例也能单独运行并打印自己的指标，例如 `python scripts/case1_equilibrium.py`。
@@ -68,7 +73,7 @@ python -m pytest -q                    # 93 项测试，≈10 s
 所以 clone 下来不装包也能直接跑全部东西。
 
 产物：`data/metrics_caseN.json`（结构化指标——本页引用的每个数字都从这些文件回读）、
-`data/caseN_*.csv`（逐偏压 / 逐节点数据）、`figures/caseN_*.png`（12 张图）、
+`data/caseN_*.csv`（逐偏压 / 逐节点数据）、`figures/caseN_*.png`（13 张图）、
 `data/summary.json`（含各案例墙钟的汇总）。
 
 ## 当作库使用
@@ -147,7 +152,7 @@ U, J, reps = sol.iv_sweep(np.arange(0.0, 0.71, 0.02))   # 自适应偏压延拓
 |---|---|---|---|
 | **L1** | 解析不变量：平衡态零电流、准费米能级平坦、`np = n_i²`、V_bi / W / E_max 对比闭式解 | **强制底线** | 模型完备性——它认证的是离散格式，不是你选的那套物理 |
 | **L2** | 5 套网格的无关性，观测阶 ≈ 2 | **强制底线** | 收敛极限是否就是*正确*答案 |
-| **L3** | 相同输入下端电流对比 NIST Sesame 2.0，23 个偏压点 | 加分项 | 任何独立的 ground truth——**独立代码 ≠ 独立验证链**；且两码共用同一套模型，这一层对模型完备性零效力 |
+| **L3** | 相同输入下对比 NIST Sesame 2.0：**端电流** 23 个偏压点（案例 5）+ **内部剖面**（电位、n、p、电场）4 个偏压点（案例 7） | 加分项 | 任何独立的 ground truth——**独立代码 ≠ 独立验证链**；且两码共用同一套模型，这一层对模型完备性零效力 |
 
 闸门：L1 或 L2 失败即交付物失败，L3 不能补偿；只缺 L3 只意味着"外部一致性未证明"，
 不是"不予验收"。交叉对照只有在前提声明清楚时才有意义（同网格、同掺杂、同材料常数、
@@ -167,8 +172,34 @@ U, J, reps = sol.iv_sweep(np.arange(0.0, 0.71, 0.02))   # 自适应偏压延拓
   属于噪声底末位差异被相对量放大；中位偏差三版本一致到 1.292e-6（相对差 ~1e-5），
   且 `agree_to_3_digits` 只是展示项、没有任何断言依赖它。**判据层面不受影响。**
 
-跳过一律不计入通过：删掉 `reference/` 后，套件报告 89 passed / 4 skipped 且案例 5 消失；
-那种状态标记为"未执行"，不是"通过"。
+跳过一律不计入通过：删掉 `reference/` 后，套件报告 **89 passed / 12 skipped**，
+案例 5 与案例 7 同时消失；那种状态标记为"未执行"，不是"通过"。
+
+### 案例 7：把 L3 从端电流扩到内部剖面
+
+案例 5 只能证明"两个码在 23 个偏压点上给出同一个端电流"。端电流是一个标量，
+理论上不同的内部分布可以积出同一个标量，所以那一层没有触及解的形状。案例 7 把
+Sesame 收敛后的内部状态读出来（`IVcurve` 把每个偏压点存成 `.gzip`，`load_sim` +
+`Analyzer` 取回 n、p、电位），在**同一套节点数组**上逐点比对，因此不需要改动
+vendored 代码的任何一行（入库摘要依旧成立）。
+
+阈值共 6 条（`scripts/case7_sesame_profiles.py` 的 `GATES`，全部先于结果声明），
+但它们回答的是四个不同的问题，不是一条"误差 < x"：
+
+- **电位零点是规范（gauge），不是物理。** Sesame 的电位以均匀中性区的**本征能级**为零点，
+  本实现以自身静电势为准，因此差值应当是一个常数
+  `−(χ + E_g/2 + (V_t/2)·ln(N_c/N_v))`。实测偏移 −4.615497472 V 与该解析值**误差 0.0**，
+  且在四个偏压下**完全不变**（极差 0.0）。去掉这个常数后，电位逐节点最大差 **1.29e-8 V**。
+  这条判据的真正作用是：它证明比对是在同一物理量上做的，而不是两条各自漂移的曲线。
+- **平衡/反偏是精度的：** 密度最大相对偏差 **7.91e-9**，电场 **3.2e-9**，
+  与案例 1 的 L1 不变量同量级——两套独立实现把同一个热平衡解做到噪声底。
+- **正偏是前提之差，且已经定位：** 密度偏差 1.48e-3（0.30 V）与 8.5e-4（0.60 V），
+  最大点落在 **x = 119.6 µm 的 p 接触**上；把网格加密到 1601 节点，该点不减反增
+  （8.50e-4 → 1.76e-3），体区则一直是 2.2e-5。所以这是接触边界条件的建模差
+  （Dirichlet 双势 vs `contact_S` 表面复合速度）而非离散误差，8 项新测试里专门有一条
+  断言"接触处偏差 > 体区 10 倍"，把这句话变成可执行判据而不是说明文字。
+- **电场是精度的：** 用同一个边缘差分模板（Sesame 不输出电场，必须自己差分），
+  体区相对偏差 **1.50e-7**，最大绝对差 8.0e-4 V/cm。
 
 ### 第三方代码：版本锁与原始数据
 
@@ -181,8 +212,9 @@ U, J, reps = sol.iv_sweep(np.arange(0.0, 0.71, 0.02))   # 自适应偏压延拓
 | 获取方式 | vendored 入库，**不是 pip 安装**（`pip show sesame` → not found），评审者不存在版本歧义 |
 | 改动 | 任何保留文件都未改动；`LICENSE.rst` / `AUTHORS.rst` 与逐文件版权头原样保留。为把仓库压到 4 MB 左右，删掉了 `doc/`、`examples/`、`test_suite/`（均不含求解器代码） |
 | 完整性摘要 | 入库 24 个 `.py` → SHA-256 `fa1698474ee02d89c632761742c122df5e8f3a13cbe0f68fdcf9f8a481f1ee30`；裁剪前完整副本（44 个 `.py`）→ `b1b093cf389a487b8d249b9b782e6343ca17aeb36272c94054ccca851cca9cb0` |
-| 逐点原始数据 | [data/case5_sesame_crosscheck.csv](data/case5_sesame_crosscheck.csv) — 23 行（`V_V`、`J_self_A_cm-2`、`J_sesame_A_cm-2`、`rel_dev`），不跑任何求解器即可逐点复算偏差 |
-| 依赖隔离 | 求解器核心永不 import Sesame；只有 `devices.sesame_system()` 和案例 5 脚本会 |
+| 逐点原始数据 | [data/case5_sesame_crosscheck.csv](data/case5_sesame_crosscheck.csv) — 23 行（`V_V`、`J_self_A_cm-2`、`J_sesame_A_cm-2`、`rel_dev`），不跑任何求解器即可逐点复算偏差；[data/case7_sesame_profiles.csv](data/case7_sesame_profiles.csv) — 逐节点剖面（每偏压 801 行：x、两码的 n / p / 电位 / 电场），可离线复算上面每一个偏差 |
+| 依赖隔离 | 求解器核心永不 import Sesame；只有 `devices.sesame_system()` 和案例 5/7 脚本会 |
+| vendored 代码是否被改动 | 否。案例 7 只通过公开 API（`IVcurve` → `load_sim` → `Analyzer`）读取 Sesame 的内部状态，未新增/修改 `reference/` 下任何文件，因此上面的 SHA-256 摘要在案例 7 加入后仍成立 |
 
 ```bash
 # 用上面的摘要校验入库参考代码
@@ -235,9 +267,14 @@ MOS / MOSFET 电容结构 · pin 结 · 异质结 · 渐变掺杂结 · 瞬态�
 
 其余已声明的限制：稳态、一维、均匀寿命、单一中隙 SRH 能级、无 Auger / 隧穿 / Schottky 复合、
 无位移电流（因此没有交流、也没有 C-V 频率色散——案例 3 的电容是准静态 dQ/dV）；
-x_j 处掺杂突变；0.70 V 扫描仍留在弱注入一侧；与 Sesame 的比较只覆盖端电流
-（要比场和密度得去读 Sesame 求解后的内部状态）；残差下限 ≈3e-9，
+x_j 处掺杂突变；0.70 V 扫描仍留在弱注入一侧。与 Sesame 的比较现已覆盖端电流**和**内部剖面
+（电位、n、p、由同一模板差出的电场），但仍只覆盖这一个突变结、这一组物性、
+这 4 个偏压点；Sesame 不输出电场，剖面对照里的电场是两码各自差分的产物。
+残差下限 ≈3e-9，
 因此所有*相对*指标都在 |J| > 1e-3 A/cm² 内给出——低于它就是读求解器噪声，不是物理。
+案例 7 的相对指标同理按**量级**处理小量，且两种口径都写明：密度是**排除**低于 1e6 cm⁻³
+的节点（而不是当作零误差计入），否则耗尽边缘的 Boltzmann 尾会把除法噪声读成偏差；
+电场因为在器件内部**变号**，改用**分母下限** `max(|E|, 1e3 V/cm)`。
 
 原始项目书里的另一条技术路线（FEniCS 有限元）没有采用：一维有限体积 + SG link
 已经能给出可证明的平衡态精确性和干净的二阶，且只需 numpy/scipy、无编译链，
@@ -251,12 +288,12 @@ src/p5dd/          constants · bernoulli · material（Arora / Slotboom / SRH�
                    solver（残差 + 解析雅可比 + 阻尼 Newton + 延拓）· theory（V_bi、耗尽、
                    Shockley、理想因子）· analysis（峰值场、耗尽电荷、C = dQ/dV、
                    Mott-Schottky）· viz（Agg 样式）
-scripts/           case1..case6 + run_all.py
-tests/             93 项测试，session 级已求解 fixture
+scripts/           case1..case7 + run_all.py
+tests/             101 项测试，session 级已求解 fixture
 reports/           technical-report.md · acceptance-checklist.md（均为中文）
-data/ figures/     入库的指标、逐点 CSV、12 张 PNG
+data/ figures/     入库的指标、逐点 CSV、13 张 PNG
 reference/         vendored Sesame 2.0（已裁剪；保留文件未改动）+ PROVENANCE.md
-.github/workflows/ CI：测试套件 + 六个案例，Python 3.10 / 3.12 / 3.13
+.github/workflows/ CI：测试套件 + 七个案例，Python 3.10 / 3.12 / 3.13
 ```
 
 ## 许可证

@@ -15,8 +15,8 @@
   "J_solver_at_-0p60": 1.05769037604947e-06,
   "J_sesame_at_-0p60": 1.0576990921814213e-06,
   "max_newton_iterations": 6,
-  "seconds_self_built": 0.7705760000098962,
-  "seconds_sesame": 6.578483899997082,
-  "speed_factor": 8.537099390472317,
+  "seconds_self_built": 0.8508343000139575,
+  "seconds_sesame": 7.307125299994368,
+  "speed_factor": 8.588188440304414,
   "fig": "case5_sesame_crosscheck.png"
 }
