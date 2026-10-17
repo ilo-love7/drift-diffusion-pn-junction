@@ -21,7 +21,4 @@ jobs:
       - name: solver tests
         run: python -m pytest -q
       - name: verification cases (writes data/ and figures/)
-        run: python scripts/run_all.py --fast
-      - name: report test accounting
-        when: always
-        run: python -m pytest -q --tb=no | tail -n 1
+        run: python scripts/run_all.py
