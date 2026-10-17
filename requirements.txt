@@ -1,0 +1,19 @@
+# drift-diffusion-pn-junction · 一维漂移-扩散求解器与 Si p-n 结验证
+# 纯 CPU、无外部数据。Python 3.10+（开发验证环境 3.14.3）。
+# 版本号为开发环境实测值，向下约束为已验证可用的最低版本。
+
+numpy>=1.24          # 实测 2.5.3
+scipy>=1.10          # 实测 1.18.1（稀疏矩阵 + spsolve，全部线性代数来源）
+matplotlib>=3.6      # 实测 3.11.2（仅 scripts/ 与 viz.py 使用，Agg 后端）
+
+# 测试
+pytest>=7.0          # 实测 9.1.1
+
+# 可选：case 5 与 tests/test_sesame_crosscheck.py 的独立对照
+# NIST Sesame 2.0 已归档在 reference/sesame/（3-clause BSD；保留文件未修改，
+# 发布时裁剪掉 doc/、examples/、test_suite/ 三个不含求解器代码的子树，
+# 见 reference/PROVENANCE.md）。运行时由脚本注入 sys.path，不需要 pip install。
+# 如需上游版本：python -m pip install git+https://github.com/usnistgov/sesame.git
+# 注意 PyPI 上的同名包与本器件仿真无关，请勿 pip install sesame。
+# 删除 reference/ 时 case 5 与相应 4 项测试自动跳过，其余 5 个案例与 89 项测试照常；
+# 跳过一律不计入通过（reports/acceptance-checklist.md）。

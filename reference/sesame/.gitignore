@@ -1,0 +1,7 @@
+*.pyc
+doc/build
+doc/reference/generated
+build
+sesame.egg-info
+dist
+*.cfg

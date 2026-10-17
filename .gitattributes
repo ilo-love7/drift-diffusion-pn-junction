@@ -1,0 +1,15 @@
+# Normalise our own sources to LF in the repository.
+* text=auto eol=lf
+
+# Last match wins, so these override the rule above.
+#
+# Vendored third-party code must keep its exact bytes: the SHA-256 integrity
+# digests in README.md and reference/PROVENANCE.md are computed over the working
+# tree with `find | sort | xargs cat | sha256sum`, and four of the shipped Sesame
+# files legitimately contain CRLF.
+reference/** -text
+
+# Generated results are evidence: keep them byte-stable across platforms so that
+# recomputed metrics and archived per-point CSVs match on any clone.
+data/** -text
+figures/** -text

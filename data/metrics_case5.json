@@ -1,0 +1,22 @@
+{
+  "case": 5,
+  "name": "sesame_crosscheck",
+  "n_nodes": 801,
+  "sweep_points": 23,
+  "points_compared": 22,
+  "sesame_tol": 1e-09,
+  "max_rel_dev": 0.00028514826753690484,
+  "median_rel_dev": 1.2920358428833824e-06,
+  "max_log10_dev": 0.00012385597861364062,
+  "agree_to_3_digits": true,
+  "agree_to_2_digits": true,
+  "J_solver_at_0p60": -0.801447218005456,
+  "J_sesame_at_0p60": -0.8014468673740399,
+  "J_solver_at_-0p60": 1.05769037604947e-06,
+  "J_sesame_at_-0p60": 1.0576990921814213e-06,
+  "max_newton_iterations": 6,
+  "seconds_self_built": 0.7705760000098962,
+  "seconds_sesame": 6.578483899997082,
+  "speed_factor": 8.537099390472317,
+  "fig": "case5_sesame_crosscheck.png"
+}
