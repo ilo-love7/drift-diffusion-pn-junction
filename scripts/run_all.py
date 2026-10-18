@@ -5,7 +5,7 @@ Each ``scripts/caseN_*.py`` module exposes ``run() -> dict`` and writes
 key numbers into ``data/summary.json`` and prints one table, so a reviewer can
 reproduce the whole study with a single command.
 
-    python scripts/run_all.py            # all eight cases
+    python scripts/run_all.py            # all nine cases
     python scripts/run_all.py --fast     # skip the slow ones (mesh, Sesame, transients)
     python scripts/run_all.py --only 2 5 # selected cases
 """
@@ -53,8 +53,12 @@ CASES = {
          "uniformity_with_displacement_max", "terminal_current_over_terms_max",
          "uniformity_ratio_displacement_gain",
          "chains_with_zero_newton_iterations", "all_gates_passed"]),
+    9: ("case9_turnoff",
+        ["bookkeeping_closure_electron_rel", "bookkeeping_closure_hole_rel",
+         "uniformity_with_displacement_max", "plateau_over_ohmic",
+         "extracted_charge_step_order", "all_gates_passed"]),
 }
-SLOW = {4, 5, 7, 8}
+SLOW = {4, 5, 7, 8, 9}
 
 
 def _flatten(m: dict) -> dict:

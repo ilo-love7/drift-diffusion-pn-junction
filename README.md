@@ -9,7 +9,7 @@
 从零实现的 1D 稳态漂移-扩散–泊松求解器：有限体积 + Scharfetter–Gummel _link_、解析稀疏
 雅可比、阻尼 Newton + 自适应偏压延拓。验证走两条独立路线——**闭式半导体理论**（L1/L2）和
 **第三方器件模拟器 NIST Sesame 2.0**（L3）。只用 numpy/scipy，无 GPU、无编译链，
-整套验证本地一条命令约 50 秒复现。
+整套验证本地一条命令约 90 秒复现。
 
 > **English (full version in [README.en.md](README.en.md)):** a from-scratch 1-D
 > drift-diffusion–Poisson solver for an Si p-n junction, verified against closed-form theory and
@@ -17,7 +17,7 @@
 > out-of-scope structures (MOS, heterojunctions, transients…) are declared *not built, not
 > verified*.
 
-**113 collected / 113 passed / 0 skipped**（≈23 s）· 八个验证案例（≈58 s）· Python 3.10 / 3.12 / 3.13 全部在 CI 上通过 · MIT（其中 vendored Sesame 部分仍为 3-clause BSD）
+**113 collected / 113 passed / 0 skipped**（≈23 s）· 九个验证案例（≈93 s）· Python 3.10 / 3.12 / 3.13 全部在 CI 上通过 · MIT（其中 vendored Sesame 部分仍为 3-clause BSD）
 
 ---
 
@@ -33,8 +33,9 @@
 | 6 | 真实硅物性（Arora 迁移率 + Slotboom 带隙窄化） | V_bi 下降 **21.3 mV**，局部 n_i ×1.60，J_s ×1.90，J(0.60 V) ×1.54；平衡不变量仍是 7.99e-14 | ✅ |
 | 7 | 与 **NIST Sesame 2.0** 的**内部剖面**对照（同一网格、同一输入，4 个偏压点：−0.60 / 0 / 0.30 / 0.60 V） | 电位最大差 **1.29e-8 V**；平衡/反偏密度最大相对偏差 **7.91e-9**；体区电场相对偏差 **1.50e-7**。两码电位零点相差一个常数 **−4.615497472 V**，与解析的"本征能级参考"预测**逐位相同**（误差 0.0）且随偏压不漂移（spread 0.0）。正偏密度偏差 1.48e-3，最大点落在**接触处**（x = 119.6 µm），网格加密到 1601 节点后不减反增（8.50e-4 → 1.76e-3）——是接触/格式前提之差，不是分辨率不足 | ✅ |
 | 8 | **瞬态 slab：两个解析时间常数 + 积分器阶数**（求解器新增时间项后的必答题） | 介质松弛模率 σ/ε（τ=47.9 fs）与等离子体模率 1/τ+D_a k²（τ=9.92 ns）实测相对误差 **4.0e-7 / 2.0e-5**——两率差五个数量级，各自独立步长与容差（容差取自扫描而非取值偏好）；θ 格式收敛阶实测 **0.98（BE，理论 1）/ 2.01（CN，理论 2）**；单指数衰减（fit rms ≤ 2.8e-6），速率不随拟合窗口/扰动幅度/容差漂移；注入扫描定位线性区边界（Δn ≤ 1e12 cm⁻³ 时 rate/λ > 0.99999；忽略双极扩散项会犯 8.5e-3 的错，高于 5e-3 门禁——**该不可忽略**）；位移电流不变量：仅粒子电流最大不均匀度 1.0000264，加 ε dE/dt 后降至 5.29e-5（**×1.9e4**），两项之和按镜像对称严格消失（4.1e-13） | ✅（23 项门禁全过） |
-| 9 | 单元测试 | **113 collected / 113 passed / 0 skipped**，含解析 vs 有限差分雅可比、带隙窄化下的广义 SG 回归测试、无窄化时的严格退化断言、8 项 Sesame 剖面对照断言与瞬态模态/时间离散映射测试 | ✅ |
-| 10 | 复现成本 | 八案例 **≈58 s**（`--fast` ≈9 s）；产物全部是本地 CSV/PNG/JSON | ✅ |
+| 9 | **结关断瞬态：0.60 V → −0.60 V 电压阶跃**（开关行为） | 位移电流让总电流在提取平台期空间均匀度到 **6.4e-10**（只算粒子电流是 0.445，改善 **7e8 倍**）；载流子记账闭合 **8.8e-10 / 1.0e-10**；长链落到冷稳态解（电位 6.9e-8 V、过剩薄层电荷 8.1e-5）；提取平台对前向片电导的**零参数**预测吻合 **1.2%**；提取电荷时间阶 **1.00**、空间阶 **2.08**；14 项门禁全过 | ✅（14 项门禁全过） |
+| 10 | 单元测试 | **113 collected / 113 passed / 0 skipped**，含解析 vs 有限差分雅可比、带隙窄化下的广义 SG 回归测试、无窄化时的严格退化断言、8 项 Sesame 剖面对照断言与瞬态模态/时间离散映射测试 | ✅ |
+| 11 | 复现成本 | 九案例 **≈93 s**（`--fast` ≈9 s）；产物全部是本地 CSV/PNG/JSON | ✅ |
 
 尺度校核（Si p-n 结，N_D = 1e17、N_A = 1e16 cm⁻³，300 K）：
 V_bi = 0.78013 V，W(0) = 0.3331 µm，E_max(0) = 4.68e4 V/cm，
@@ -63,7 +64,7 @@ L_n = 5.91 µm，L_p = 3.52 µm，J_s = 7.87e-11 A/cm²。
 ```bash
 pip install -r requirements.txt
 
-python scripts/run_all.py              # 八个案例全跑，≈58 s -> data/ figures/ + 汇总表
+python scripts/run_all.py              # 九个案例全跑，≈93 s -> data/ figures/ + 汇总表
 python scripts/run_all.py --fast       # 跳过网格研究、Sesame 对照与瞬态 slab，≈9 s
 python scripts/run_all.py --only 2 5   # 只跑指定案例
 python -m pytest -q                    # 113 项测试，≈23 s
@@ -74,7 +75,7 @@ python -m pytest -q                    # 113 项测试，≈23 s
 所以 clone 下来不装包也能直接跑全部东西。
 
 产物：`data/metrics_caseN.json`（结构化指标——本页引用的每个数字都从这些文件回读）、
-`data/caseN_*.csv`（逐偏压 / 逐节点数据）、`figures/caseN_*.png`（14 张图）、
+`data/caseN_*.csv`（逐偏压 / 逐节点数据）、`figures/caseN_*.png`（15 张图）、
 `data/summary.json`（含各案例墙钟的汇总）。
 
 ## 当作库使用
@@ -261,8 +262,9 @@ cd reference/sesame && find . -name "*.py" -type f | sort | xargs cat | sha256su
 
 框架级交付与器件级结果分开计数，本仓库对下列内容**不做任何能力声明**，它们既没实现也没测试：
 
-MOS / MOSFET 电容结构 · pin 结 · 异质结 · 渐变掺杂结 · 瞬态与开关 · 交流小信号导纳 ·
-二维器件 · 高注入（V 接近 V_bi）。
+MOS / MOSFET 电容结构 · pin 结 · 异质结 · 渐变掺杂结 · 交流小信号导纳 ·
+二维器件 · 高注入（V 接近 V_bi）。瞬态与开关已由案例 8（slab 时间常数）与案例 9
+（0.60 → −0.60 V 关断）实现并验证，仅限一维突变结这一套结构。
 
 `Device.cdot` 接受任意掺杂分布、`r_ni` 可逐节点变化、`generation(x)` 可注入，
 所以这些是**结构上支持**的——但"结构上支持" ≠ "数值上验证过"。
@@ -270,8 +272,8 @@ MOS / MOSFET 电容结构 · pin 结 · 异质结 · 渐变掺杂结 · 瞬态�
 渐变结对耗尽边缘判据的影响）都列在
 [reports/technical-report.md](reports/technical-report.md) §1.5.2 与 §8.2。
 
-其余已声明的限制：稳态、一维、均匀寿命、单一中隙 SRH 能级、无 Auger / 隧穿 / Schottky 复合、
-无位移电流（因此没有交流、也没有 C-V 频率色散——案例 3 的电容是准静态 dQ/dV）；
+其余已声明的限制：一维、均匀寿命、单一中隙 SRH 能级、无 Auger / 隧穿 / Schottky 复合、
+无交流小信号（瞬态与开关已由案例 8/9 验证，但电容仍是准静态 dQ/dV，无 C-V 频率色散）；
 x_j 处掺杂突变；0.70 V 扫描仍留在弱注入一侧。与 Sesame 的比较现已覆盖端电流**和**内部剖面
 （电位、n、p、由同一模板差出的电场），但仍只覆盖这一个突变结、这一组物性、
 这 4 个偏压点；Sesame 不输出电场，剖面对照里的电场是两码各自差分的产物。
@@ -293,12 +295,12 @@ src/p5dd/          constants · bernoulli · material（Arora / Slotboom / SRH�
                    solver（残差 + 解析雅可比 + 阻尼 Newton + 延拓）· theory（V_bi、耗尽、
                    Shockley、理想因子）· analysis（峰值场、耗尽电荷、C = dQ/dV、
                    Mott-Schottky）· viz（Agg 样式）
-scripts/           case1..case8 + run_all.py
+scripts/           case1..case9 + run_all.py
 tests/             113 项测试，session 级已求解 fixture
 reports/           technical-report.md · acceptance-checklist.md（均为中文）
-data/ figures/     入库的指标、逐点 CSV、14 张 PNG
+data/ figures/     入库的指标、逐点 CSV、15 张 PNG
 reference/         vendored Sesame 2.0（已裁剪；保留文件未改动）+ PROVENANCE.md
-.github/workflows/ CI：测试套件 + 八个案例，Python 3.10 / 3.12 / 3.13
+.github/workflows/ CI：测试套件 + 九个案例，Python 3.10 / 3.12 / 3.13
 ```
 
 ## 许可证
