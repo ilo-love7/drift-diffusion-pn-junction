@@ -70,3 +70,70 @@ def ideality_factor(V, J, T: float = 300.0) -> np.ndarray:
     V = np.asarray(V, dtype=float)
     lnJ = np.log(np.maximum(np.abs(np.asarray(J, dtype=float)), 1e-300))
     return np.gradient(V, lnJ) / thermal_voltage(T)
+
+
+# --------------------------------------------------------------- slab modes
+# The two references below belong to the uniformly doped slab
+# (``devices.homogeneous_device``), which is the abrupt-junction container with
+# the metallurgical junction moved outside the mesh.  A sin(k x) perturbation
+# that vanishes at both pinned contacts is then an eigenmode of the *discrete*
+# system as well, provided the continuum wavenumber is replaced by the
+# eigenvalue of the finite-volume second difference.
+
+def discrete_wavenumber(device, k: float) -> float:
+    """``k_h = 2 sin(k h / 2) / h`` of the uniform-mesh second difference [cm^-1].
+
+    The discrete Laplacian of ``sin(k x)`` is ``-k_h^2 sin(k x)``, which is the
+    eigenvalue the solver actually applies, so using ``k_h`` instead of ``k``
+    removes the leading O(h^2) mesh error from a mode-based comparison.
+    """
+    h = float(np.mean(device.h))
+    return float(2.0 * np.sin(k * h / 2.0) / h)
+
+
+def dielectric_relaxation(device, k: float) -> dict:
+    """Decay rate of a charge perturbation ``sin(k x)`` in a doped slab [s^-1].
+
+    Linearising the electron continuity pair about the flat equilibrium and
+    eliminating the potential with Poisson gives
+    ``d(dn)/dt = -(sigma/eps) dn + Dn d2(dn)/dx2`` with
+    ``sigma = q (mu_n n0 + mu_p p0)``: the excess space charge drains at the
+    dielectric relaxation rate, slightly accelerated by diffusion.  Both terms
+    are evaluated with :func:`discrete_wavenumber`.
+    """
+    m = device.mat
+    ni2 = (device.r_ni[0] * device.Nref) ** 2
+    n0 = device.Nd + ni2 / device.Nd
+    p0 = ni2 / device.Nd
+    sigma = Q_E * (m.mu_n0 * n0 + m.mu_p0 * p0)
+    Dn = einstein_mu(m.mu_n0, m.T)
+    kh = discrete_wavenumber(device, k)
+    return {"sigma": sigma, "Dn": Dn, "k_h": kh,
+            "lambda": sigma / m.eps + Dn * kh ** 2}
+
+
+def ambipolar_decay(device, k: float) -> dict:
+    """Decay rate of a quasi-neutral electron-hole plasma ``sin(k x)`` [s^-1].
+
+    With dn = dp the perturbation carries no net charge, so Poisson keeps the
+    potential flat and SRH linearises to ``R = dn / tau``: ``np - ni^2`` becomes
+    ``dn (n0 + p0)`` and the denominator stays ``~ tau (n0 + p0 + 2 ni)``.  The
+    amplitude that statement needs is measured, not assumed - at finite
+    injection the same expression reads ``R = dn (n0 + p0 + dn) /
+    (tau (n0 + p0 + 2 ni + dn))``, and case 8 finds the extracted rate
+    amplitude-independent, and the trace single-exponential, only while ``dn``
+    stays below about a tenth of the *minority* density ``p0``.
+    The plasma itself leaves at 1/tau but diffuses with the ambipolar
+    coefficient ``D_a = (n + p) Dn Dp / (n Dn + p Dp)``, which is set by the
+    slow carrier as soon as ``n0 >> dp``.
+    """
+    m = device.mat
+    ni2 = (device.r_ni[0] * device.Nref) ** 2
+    n0 = device.Nd + ni2 / device.Nd
+    p0 = ni2 / device.Nd
+    Dn = einstein_mu(m.mu_n0, m.T)
+    Dp = einstein_mu(m.mu_p0, m.T)
+    kh = discrete_wavenumber(device, k)
+    D_a = (n0 + p0) * Dn * Dp / (n0 * Dn + p0 * Dp)
+    return {"D_a": D_a, "k_h": kh, "tau": m.tau_n,
+            "lambda": 1.0 / m.tau_n + D_a * kh ** 2}

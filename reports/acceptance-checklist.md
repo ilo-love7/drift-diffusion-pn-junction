@@ -1,10 +1,10 @@
 # 验收核查表 · 分层判据与逐条实测值
 
 > 核查对象：科研候选项目清单第 P5 项，交付范围"PN 结二极管全套"
-> 被核查物：本仓库（`src/p5dd` 求解器、`scripts/` 七案例、`tests/`、`reference/sesame`）
+> 被核查物：本仓库（`src/p5dd` 求解器、`scripts/` 八案例、`tests/`、`reference/sesame`）
 > 核查方式：**不采信任何自述数字**，全部指标由 `python scripts/run_all.py` 本机重跑落盘后回读
 > 本次运行记录：Python 3.14.3 / numpy 2.5.3 / scipy 1.18.1 / matplotlib 3.11.2 / pytest 9.1.1，
-> Windows x64 纯 CPU；`run_all.py` 七案例 50.9 s；`pytest -q` **101 collected / 101 passed / 0 skipped**
+> Windows x64 纯 CPU；`run_all.py` 八案例 ≈58 s；`pytest -q` **113 collected / 113 passed / 0 skipped**
 > （**含 L3** —— vendored Sesame 可用，A6/A9 为实测而非跳过；跳过项一律不计入通过）
 
 ---
@@ -43,9 +43,9 @@ MOS/MOSFET 电容结构、pin 结、异质结、缓变掺杂结、瞬态与开�
 | 仅 L3 缺失 | 无 Sesame 环境（A6/A9 记"未执行"，不得记通过） | 只能写"实现自洽性通过、**外部一致性未证**" |
 | 任一 L1/L2 失败 | — | **不可交付**，不得用 L3 通过抵偿 |
 
-本次运行：下限与上限**均达成**（101 项全执行，无跳过）。
+本次运行：下限与上限**均达成**（113 项全执行，无跳过）。
 跨环境复核（非本机推断）：GitHub Actions 在 Python **3.10 / 3.12 / 3.13** 三个矩阵上
-各自 **101 collected / 101 passed / 0 skipped**，`run_all.py` 汇总表逐条出现**七个案例**，
+各自 **113 collected / 113 passed / 0 skipped**，`run_all.py` 汇总表逐条出现**八个案例**，
 A6 与 A9 依赖的 Sesame 对照在三个版本上均实际执行、`all_gates_passed` 三版本同为 True，
 无跳过抵充通过的情况（run 39052802145，commit `a127456`；见技术报告 §六）。
 
@@ -240,19 +240,50 @@ Sesame 侧通过公开 API（`IVcurve` → `load_sim` → `Analyzer`）读取收
 
 | 判据 | 实测值 | 证据位置 | 判定 |
 |---|---|---|---|
-| 一条命令复现全部指标 | `python scripts/run_all.py`，七案例 50.9 s | `data/summary.json` | ✅ |
+| 一条命令复现全部指标 | `python scripts/run_all.py`，八案例 ≈58 s | `data/summary.json` | ✅ |
 | 无外部数据/网络依赖 | 全本地；输入仅 §2.2 参数表 | 目录无数据下载脚本 | ✅ |
 | 纯 CPU、无 GPU/构建链 | 依赖仅 numpy/scipy/matplotlib | `requirements.txt` | ✅ |
 | 任一案例异常时非零退出（可接 CI） | `run_all.py` 返回 1 并列案例号 | `scripts/run_all.py:103-105` | ✅ |
-| 测试全绿且**执行数=收集数** | 101 / 101，**0 skipped** | `pytest -q` 本次输出 | ✅ |
+| 测试全绿且**执行数=收集数** | 113 / 113，**0 skipped** | `pytest -q` 本次输出 | ✅ |
 | 解析雅可比 vs 中心差分（行归一）< 1e-6 | 1.7e-9；方向积 <1e-5；两套器件 | `test_jacobian.py` | ✅ |
 | 步长阻尼可收紧仍收敛 | `du_cap=0.5` → 同一状态 | `test_solver.py` | ✅ |
-| 第三方代码缺失时主链仍完整 | 删 `reference/` 后 5 案例 + 89 项照常（案例 5、7 消失，12 项**跳过、不计通过**） | `importorskip`，实测 `89 passed, 12 skipped` | ✅ |
-| 产物齐全且指标可按键复核 | 7 JSON + summary + 7 CSV + 13 PNG | `data/`、`figures/` | ✅ |
+| 第三方代码缺失时主链仍完整 | 删 `reference/` 后 6 案例 + 101 项照常（案例 5、7 消失，12 项**跳过、不计通过**） | `importorskip`，实测 `101 passed, 12 skipped` | ✅ |
+| 产物齐全且指标可按键复核 | 8 JSON + summary + 8 CSV + 14 PNG | `data/`、`figures/` | ✅ |
 
 **这层证据证明**：交付物可被第三方在同一环境逐条复算。
 **不能证明**：测试数量不等于正确性 —— A8 只保证"判据可复核"，
-实质结论仍由 A1–A9 各自的实测值承担。
+实质结论仍由 A1–A10 各自的实测值承担。
+
+---
+
+### A10 · 瞬态 slab：两个解析时间常数与积分器阶数（案例 8；框架级）
+
+阈值全部在 `scripts/case8_slab_time_constants.py` 的 `GATES` 里**先于结果**声明。
+求解器新增时间项后，本研究第一次必须回答"时间积分是否正确"。均匀掺杂、两侧对称
+Ohmic 接触的 slab 是唯一具有闭式瞬态本征率的结构（半正弦模态在接触处为零，
+其离散 Laplacian 是自身乘以本征值），本案例校准其中两个，阶差五个数量级，
+各用自己的步长与容差（容差由扫描定，不靠取值偏好）。
+
+| 判据（阈值先声明） | 实测值 | 证据位置 | 类别 | 判定 |
+|---|---|---|---|---|
+| 两个模态的 Poisson 行仍精确（< 1e-10） | 1.11e-14 / 1.14e-14 | `case8.charge_mode_poisson_row_max`、`plasma_mode_poisson_row_max` | 框架 | ✅ |
+| 介质松弛率 vs 解析 σ/ε（τ=47.9 fs，相对 < 1e-4） | 最大 **4.03e-7**（四个步长） | `case8.dielectric_rate_rel_error_max` | 框架 | ✅ |
+| 等离子体模率 vs 解析 1/τ+D_a k²（τ=9.92 ns，相对 < 1e-3） | 最大 **2.03e-5** | `case8.plasma_rate_rel_error_max` | 框架 | ✅ |
+| 忽略双极扩散项的错误 ≥ 5e-3（证明 D_a k² 不可忽略） | **8.49e-3** | `case8.plasma_error_if_diffusion_ignored_max` | 框架 | ✅ |
+| θ 格式收敛阶偏离理论 ≤ 0.1（BE→1，CN→0.5） | **0.023**（BE）/ **0.005**（CN） | `case8.dielectric_order_dev_theta1.0/theta0.5` | 框架 | ✅ |
+| 单指数衰减（衰减拟合 rms < 1e-3） | ≤ 2.78e-6 | `case8.dielectric_fit_rms_max` | 框架 | ✅ |
+| 速率不随扰动幅度 / 拟合窗口 / 容差漂移（各 < 1e-4） | 5.2e-6 / 1.4e-7 / 1.4e-5 | `dielectric_rate_spread_over_amplitude`、`window_spread`、`plasma_rate_tol_converged` | 框架 | ✅ |
+| 线性区注入扫描（Δn ≤ 1e12 cm⁻³，低注入速率离散 < 1e-4） | rate/λ > 0.99999；离散 9.2e-6 | `plasma_low_injection_rate_spread` | 框架 | ✅ |
+| 位移电流不变量：加 ε dE/dt 后总电流不均匀度 < 1e-3，且改善 ≥ 1000 倍 | **5.29e-5；×1.9e4**（仅粒子电流 1.0000264） | `uniformity_with_displacement_max`、`uniformity_ratio_displacement_gain` | 框架 | ✅ |
+| 两项之和按镜像对称严格消失（< 1e-6） | 4.09e-13 | `case8.terminal_current_over_terms_max` | 框架 | ✅ |
+| 原子化自检（电阻极限：J、电位线性、密度均匀） | 2.14e-12 / 1.90e-13 / 7.31e-12 | `case8.resistor_*` | 框架 | ✅ |
+| 无零 Newton 迭代的病态链条（≤ 0.5） | 0 | `case8.chains_with_zero_newton_iterations` | 框架 | ✅ |
+
+**这层证据证明**：时间离散（θ 格式）的阶数被独立校准；两个解析瞬态率被复现；
+位移电流项确实是把"均匀总流"补全的那一项（去掉它不均匀度 ~1，加上它 ~5e-5，改善四个数量级）。
+**不能证明**：其它结构 / 边界条件 / 交流小信号下的瞬态行为——
+本判据只覆盖这一个两侧对称 Ohmic 接触的 slab 与两个模态；`chains_with_zero_newton_iterations`
+只说明本次扫描内无病态，不是全局收敛性证明。
 
 ---
 
@@ -263,7 +294,8 @@ Sesame 侧通过公开 API（`IVcurve` → `load_sim` → `Analyzer`）读取收
 | L1 解析不变量 | A1、A2、A3、A5 | **全绿**（最松一项为 W/Emax 的 2.84 %，已论证为参照模型固有偏差） |
 | L2 收敛性 | A4 | **全绿**（阶数 1.95/1.99，默认网格差异 ≤3.3e-5） |
 | L3 独立实现 | A6（端电流）、A9（内部剖面） | **全绿**（A6 最大 2.85e-4、中位 1.29e-6；A9 去规范电位 ≤1.29e-8 V、平衡密度 ≤7.91e-9、体区电场 ≤1.50e-7，规范常数与解析值误差 0.0；版本与逐点原始数据均已锁定） |
-| 框架级修正与工程性 | A7、A8 | **全绿**（101/101、0 跳过、50.9 s 复现） |
+| 瞬态时间离散 | A10（案例 8） | **全绿**（两个解析速率 4.0e-7 / 2.0e-5；θ 格式阶数 0.98 / 2.01；位移电流不变量 ×1.9e4、两项之和 4.1e-13） |
+| 框架级修正与工程性 | A7、A8 | **全绿**（113/113、0 跳过、≈58 s 复现） |
 
 **结论措辞（按 §一 闸门规则给出，区分验证与外推）**：
 
@@ -274,7 +306,9 @@ Sesame 侧通过公开 API（`IVcurve` → `load_sim` → `Analyzer`）读取收
    SRH 产生电流、扩散长度、串阻压降）在各自声明的容差内复现。
    广义 SG 对 `n_i(x)` 的平衡精确性（含带隙窄化成因）已直接验证。
 2. **未验证（外推，不得当作本轮成果）**：同一框架解 MOS 电容/pin 结/异质结/缓变结的能力、
-   瞬态与交流小信号、2D、高注入；`q n_i W/(τ_n+τ_p)` 高估现象在其它寿命/掺杂下的普适性。
+   交流小信号、2D、高注入；瞬态行为**仅**在案例 8 的两侧对称 Ohmic 接触 slab 上验证
+   （两个解析模态 + θ 格式阶数 + 位移电流不变量），其它结构、其它边界条件、
+   外加电路耦合下的瞬态均未验证；`q n_i W/(τ_n+τ_p)` 高估现象在其它寿命/掺杂下的普适性。
 3. **不可由 L3 抵偿的方向**：物理模型完备性。两码模型集相同，
    一致性对这些方向零判别力，故本表**不出现**"物理完备性已外部验证"这类表述。
 

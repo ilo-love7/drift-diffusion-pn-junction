@@ -121,8 +121,8 @@
       "E_max_abs_diff_V_cm": 0.0008024921826290665
     }
   ],
-  "seconds_sesame": 10.5463591000007,
-  "seconds_self_built_profiles": 0.9492576000047848,
+  "seconds_sesame": 6.590022099990165,
+  "seconds_self_built_profiles": 0.6129389999841806,
   "psi_max_abs_diff_V": 1.290558188093982e-08,
   "psi_gauge_offset_spread_V": 0.0,
   "density_rel_dev_eq_reverse_max": 7.91439666554632e-09,

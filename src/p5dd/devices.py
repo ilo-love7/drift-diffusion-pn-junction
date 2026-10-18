@@ -47,6 +47,29 @@ def realistic_device(n_nodes: int = 1601) -> Device:
     return Device(x=x, Nd=ND, Na=NA, x_j=X_JUNCTION, mat=mat)
 
 
+def homogeneous_device(n_doping: float = ND, n_nodes: int = 401,
+                       length: float = LENGTH, uniform_mesh: bool = True,
+                       **overrides) -> Device:
+    """Uniformly doped n-type slab between two identical Ohmic contacts.
+
+    It is the abrupt-junction container with the metallurgical junction placed
+    just outside the mesh, so ``Vbi = 0``, the equilibrium potential is flat and
+    the same discretisation serves the analytic transient time constants
+    (dielectric relaxation and excess-carrier decay) without a second code path.
+    The mesh is uniform by default: these tests vary the time step, so a graded
+    mesh would mix a spatial and a temporal refinement into one error measure.
+    """
+    mat_kw = dict(SI)
+    mat_kw.update(overrides.pop("material", {}))
+    mat = Material(mobility_model="constant", bgn_model="none", **mat_kw)
+    if uniform_mesh:
+        x = np.linspace(0.0, float(length), int(n_nodes))
+    else:
+        x = graded_mesh(length, 0.5 * length, H_FINE, H_MAX, SPREAD, n_nodes)
+    return Device(x=x, Nd=float(n_doping), Na=0.0, x_j=float(length) * (1.0 + 1e-12),
+                  mat=mat, **overrides)
+
+
 def sesame_system(device: Device, sys_path: str | None = None,
                   surface_velocity: float = 1.0e9):
     """Build the equivalent Sesame ``Builder`` system for ``device``.

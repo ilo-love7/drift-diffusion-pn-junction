@@ -14,7 +14,7 @@ build chain, whole verification suite reproducible in about 50 seconds.
 
 > 中文版见 [README.md](README.md)（仓库主页）。
 
-**101 collected / 101 passed / 0 skipped** (≈15 s) · 7 verification cases (≈51 s) · green on CI for Python 3.10 / 3.12 / 3.13 · MIT (the vendored Sesame part stays 3-clause BSD)
+**113 collected / 113 passed / 0 skipped** (≈23 s) · 8 verification cases (≈58 s) · green on CI for Python 3.10 / 3.12 / 3.13 · MIT (the vendored Sesame part stays 3-clause BSD)
 
 ---
 
@@ -29,8 +29,9 @@ build chain, whole verification suite reproducible in about 50 seconds.
 | 5 | Cross-check vs **NIST Sesame 2.0**, identical inputs, 23 bias points | max relative deviation of terminal current **2.85e-4**, median 1.29e-6; J(0.60 V) = −0.8014472 vs −0.8014469 A/cm²; this solver is **8.6×** faster on this machine. *This case compares the terminal current alone — the internal profiles are compared in case 7; both codes share the same model set, so this layer says nothing about model completeness, and reference truth stays with L1.* | ✅ |
 | 6 | Realistic silicon (Arora mobility + Slotboom band-gap narrowing) | V_bi drops **21.3 mV**, local n_i ×1.60, J_s ×1.90, J(0.60 V) ×1.54; equilibrium invariant stays at 7.99e-14 | ✅ |
 | 7 | Cross-check of the **internal profiles** vs **NIST Sesame 2.0** (same node array, same inputs, 4 biases: −0.60 / 0 / 0.30 / 0.60 V) | max potential difference **1.29e-8 V**; max relative density deviation **7.91e-9** at equilibrium and reverse bias; bulk-region field deviation **1.50e-7**. The two potentials differ by the constant **−4.615497472 V**, which matches the analytic intrinsic-level reference **bit for bit** (error 0.0) and does not drift with bias (spread 0.0). Forward density deviation 1.48e-3, peaking *at the contact* (x = 119.6 µm); refining the mesh to 1601 nodes makes it larger, not smaller (8.50e-4 → 1.76e-3) — a contact/scheme premise difference, not a resolution limit | ✅ |
-| 8 | Unit tests | **101 collected / 101 passed / 0 skipped**, incl. analytic-vs-finite-difference Jacobian, a band-gap-narrowing generalised-SG regression test, an exact-degeneracy assertion when narrowing is absent, and 8 Sesame profile-agreement assertions | ✅ |
-| 9 | Reproduction cost | all seven cases **≈51 s** (≈8 s with `--fast`); every product is a local CSV/PNG/JSON | ✅ |
+| 8 | **Transient slab: two analytic time constants + integrator order** (the exam the solver now has to pass after gaining a time term) | measured relative error **4.0e-7 / 2.0e-5** for the dielectric-relaxation rate σ/ε (τ = 47.9 fs) and the plasma-mode rate 1/τ + D_a k² (τ = 9.92 ns) — five orders of magnitude apart, each with its own step size and tolerance (tolerances taken from a scan, not from taste); measured θ-scheme convergence orders **0.98 (BE, theory 1) / 2.01 (CN, theory 2)**; single-exponential decay (fit rms ≤ 2.8e-6) with the extracted rate insensitive to fit window, perturbation amplitude and tolerance; an injection scan bounds the linear regime (rate/λ > 0.99999 up to Δn = 1e12 cm⁻³; ignoring the ambipolar diffusion term would err by 8.5e-3, above the 5e-3 gate — **it cannot be dropped**); displacement-current invariant: particle current alone is non-uniform to 1.0000264, adding ε dE/dt brings it to 5.29e-5 (**×1.9e4**) and the two terms sum to nothing by mirror symmetry (4.1e-13) | ✅ (all 23 gates pass) |
+| 9 | Unit tests | **113 collected / 113 passed / 0 skipped**, incl. analytic-vs-finite-difference Jacobian, a band-gap-narrowing generalised-SG regression test, an exact-degeneracy assertion when narrowing is absent, 8 Sesame profile-agreement assertions and transient modal / time-discretisation-map tests | ✅ |
+| 10 | Reproduction cost | all eight cases **≈58 s** (≈9 s with `--fast`); every product is a local CSV/PNG/JSON | ✅ |
 
 Scale check, Si p-n junction (N_D = 1e17, N_A = 1e16 cm⁻³, 300 K):
 V_bi = 0.78013 V, W(0) = 0.3331 µm, E_max(0) = 4.68e4 V/cm,
@@ -60,10 +61,10 @@ L_n = 5.91 µm, L_p = 3.52 µm, J_s = 7.87e-11 A/cm².
 ```bash
 pip install -r requirements.txt
 
-python scripts/run_all.py              # all seven verification cases, ≈51 s -> data/ figures/ + summary table
-python scripts/run_all.py --fast       # skip the mesh study and the Sesame cross-checks, ≈8 s
+python scripts/run_all.py              # all eight verification cases, ≈58 s -> data/ figures/ + summary table
+python scripts/run_all.py --fast       # skip the mesh study, the Sesame cross-checks and the transient slab, ≈9 s
 python scripts/run_all.py --only 2 5   # selected cases only
-python -m pytest -q                    # 101 tests, ≈15 s
+python -m pytest -q                    # 113 tests, ≈23 s
 ```
 
 Each case also runs standalone and prints its metrics, e.g. `python scripts/case1_equilibrium.py`.
@@ -326,10 +327,10 @@ src/p5dd/          constants · bernoulli · material (Arora / Slotboom / SRH) �
                    adapters) · solver (residual + analytic Jacobian + damped Newton +
                    continuation) · theory (V_bi, depletion, Shockley, ideality) · analysis
                    (peak field, depletion charge, C = dQ/dV, Mott-Schottky) · viz (Agg styling)
-scripts/           case1..case7 + run_all.py
-tests/             101 tests, session-scoped solved fixtures
+scripts/           case1..case8 + run_all.py
+tests/             113 tests, session-scoped solved fixtures
 reports/           technical-report.md · acceptance-checklist.md (both in Chinese)
-data/ figures/     committed metrics, per-point CSV, 13 PNG
+data/ figures/     committed metrics, per-point CSV, 14 PNG
 reference/         vendored Sesame 2.0 (trimmed; retained files unmodified) + PROVENANCE.md
 .github/workflows/ CI: test suite + all seven cases on Python 3.10 / 3.12 / 3.13
 ```

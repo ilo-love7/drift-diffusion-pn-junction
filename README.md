@@ -17,7 +17,7 @@
 > out-of-scope structures (MOS, heterojunctions, transients…) are declared *not built, not
 > verified*.
 
-**101 collected / 101 passed / 0 skipped**（≈15 s）· 七个验证案例（≈51 s）· Python 3.10 / 3.12 / 3.13 全部在 CI 上通过 · MIT（其中 vendored Sesame 部分仍为 3-clause BSD）
+**113 collected / 113 passed / 0 skipped**（≈23 s）· 八个验证案例（≈58 s）· Python 3.10 / 3.12 / 3.13 全部在 CI 上通过 · MIT（其中 vendored Sesame 部分仍为 3-clause BSD）
 
 ---
 
@@ -32,8 +32,9 @@
 | 5 | 与 **NIST Sesame 2.0** 交叉对照（输入完全一致，23 个偏压点） | 端电流最大相对偏差 **2.85e-4**、中位 1.29e-6；J(0.60 V) = −0.8014472 vs −0.8014469 A/cm²；本机本求解器快 **8.6 倍**。*本案例只比端电流这一个标量，内部剖面见案例 7；两码共用同一套模型，所以这一层对"模型是否完备"没有任何发言权，reference truth 仍留在 L1。* | ✅ |
 | 6 | 真实硅物性（Arora 迁移率 + Slotboom 带隙窄化） | V_bi 下降 **21.3 mV**，局部 n_i ×1.60，J_s ×1.90，J(0.60 V) ×1.54；平衡不变量仍是 7.99e-14 | ✅ |
 | 7 | 与 **NIST Sesame 2.0** 的**内部剖面**对照（同一网格、同一输入，4 个偏压点：−0.60 / 0 / 0.30 / 0.60 V） | 电位最大差 **1.29e-8 V**；平衡/反偏密度最大相对偏差 **7.91e-9**；体区电场相对偏差 **1.50e-7**。两码电位零点相差一个常数 **−4.615497472 V**，与解析的"本征能级参考"预测**逐位相同**（误差 0.0）且随偏压不漂移（spread 0.0）。正偏密度偏差 1.48e-3，最大点落在**接触处**（x = 119.6 µm），网格加密到 1601 节点后不减反增（8.50e-4 → 1.76e-3）——是接触/格式前提之差，不是分辨率不足 | ✅ |
-| 8 | 单元测试 | **101 collected / 101 passed / 0 skipped**，含解析 vs 有限差分雅可比、带隙窄化下的广义 SG 回归测试、无窄化时的严格退化断言、以及 8 项 Sesame 剖面对照断言 | ✅ |
-| 9 | 复现成本 | 七案例 **≈51 s**（`--fast` ≈8 s）；产物全部是本地 CSV/PNG/JSON | ✅ |
+| 8 | **瞬态 slab：两个解析时间常数 + 积分器阶数**（求解器新增时间项后的必答题） | 介质松弛模率 σ/ε（τ=47.9 fs）与等离子体模率 1/τ+D_a k²（τ=9.92 ns）实测相对误差 **4.0e-7 / 2.0e-5**——两率差五个数量级，各自独立步长与容差（容差取自扫描而非取值偏好）；θ 格式收敛阶实测 **0.98（BE，理论 1）/ 2.01（CN，理论 2）**；单指数衰减（fit rms ≤ 2.8e-6），速率不随拟合窗口/扰动幅度/容差漂移；注入扫描定位线性区边界（Δn ≤ 1e12 cm⁻³ 时 rate/λ > 0.99999；忽略双极扩散项会犯 8.5e-3 的错，高于 5e-3 门禁——**该不可忽略**）；位移电流不变量：仅粒子电流最大不均匀度 1.0000264，加 ε dE/dt 后降至 5.29e-5（**×1.9e4**），两项之和按镜像对称严格消失（4.1e-13） | ✅（23 项门禁全过） |
+| 9 | 单元测试 | **113 collected / 113 passed / 0 skipped**，含解析 vs 有限差分雅可比、带隙窄化下的广义 SG 回归测试、无窄化时的严格退化断言、8 项 Sesame 剖面对照断言与瞬态模态/时间离散映射测试 | ✅ |
+| 10 | 复现成本 | 八案例 **≈58 s**（`--fast` ≈9 s）；产物全部是本地 CSV/PNG/JSON | ✅ |
 
 尺度校核（Si p-n 结，N_D = 1e17、N_A = 1e16 cm⁻³，300 K）：
 V_bi = 0.78013 V，W(0) = 0.3331 µm，E_max(0) = 4.68e4 V/cm，
@@ -62,10 +63,10 @@ L_n = 5.91 µm，L_p = 3.52 µm，J_s = 7.87e-11 A/cm²。
 ```bash
 pip install -r requirements.txt
 
-python scripts/run_all.py              # 七个案例全跑，≈51 s -> data/ figures/ + 汇总表
-python scripts/run_all.py --fast       # 跳过网格研究与 Sesame 对照，≈8 s
+python scripts/run_all.py              # 八个案例全跑，≈58 s -> data/ figures/ + 汇总表
+python scripts/run_all.py --fast       # 跳过网格研究、Sesame 对照与瞬态 slab，≈9 s
 python scripts/run_all.py --only 2 5   # 只跑指定案例
-python -m pytest -q                    # 101 项测试，≈15 s
+python -m pytest -q                    # 113 项测试，≈23 s
 ```
 
 每个案例也能单独运行并打印自己的指标，例如 `python scripts/case1_equilibrium.py`。
@@ -73,7 +74,7 @@ python -m pytest -q                    # 101 项测试，≈15 s
 所以 clone 下来不装包也能直接跑全部东西。
 
 产物：`data/metrics_caseN.json`（结构化指标——本页引用的每个数字都从这些文件回读）、
-`data/caseN_*.csv`（逐偏压 / 逐节点数据）、`figures/caseN_*.png`（13 张图）、
+`data/caseN_*.csv`（逐偏压 / 逐节点数据）、`figures/caseN_*.png`（14 张图）、
 `data/summary.json`（含各案例墙钟的汇总）。
 
 ## 当作库使用
@@ -292,12 +293,12 @@ src/p5dd/          constants · bernoulli · material（Arora / Slotboom / SRH�
                    solver（残差 + 解析雅可比 + 阻尼 Newton + 延拓）· theory（V_bi、耗尽、
                    Shockley、理想因子）· analysis（峰值场、耗尽电荷、C = dQ/dV、
                    Mott-Schottky）· viz（Agg 样式）
-scripts/           case1..case7 + run_all.py
-tests/             101 项测试，session 级已求解 fixture
+scripts/           case1..case8 + run_all.py
+tests/             113 项测试，session 级已求解 fixture
 reports/           technical-report.md · acceptance-checklist.md（均为中文）
-data/ figures/     入库的指标、逐点 CSV、13 张 PNG
+data/ figures/     入库的指标、逐点 CSV、14 张 PNG
 reference/         vendored Sesame 2.0（已裁剪；保留文件未改动）+ PROVENANCE.md
-.github/workflows/ CI：测试套件 + 七个案例，Python 3.10 / 3.12 / 3.13
+.github/workflows/ CI：测试套件 + 八个案例，Python 3.10 / 3.12 / 3.13
 ```
 
 ## 许可证

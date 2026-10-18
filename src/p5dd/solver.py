@@ -1,4 +1,4 @@
-"""Steady-state 1D drift-diffusion-Poisson solver.
+"""Steady-state and transient 1D drift-diffusion-Poisson solver.
 
 Formulation
 -----------
@@ -19,6 +19,23 @@ Discretisation
 
 Solution: damped Newton on the sparse block system with analytic Jacobians,
 driven by adaptive bias continuation for an I-V sweep.
+
+Transients
+----------
+Time is measured in units of ``Device.Tscale = Lambda^2 / Dref``, the diffusive
+scale that makes the dimensionless continuity pair read exactly
+``d n / d t = div J + U``.  A step of length ``dt`` then uses the theta scheme
+``(x - x_old) / dt = theta R(new) + (1 - theta) R(old)`` (``theta = 1``:
+backward Euler, first order and L-stable; ``theta = 0.5``: Crank-Nicolson,
+second order but not L-stable, so it can ring under a bias step) with Poisson
+still imposed at the new time, and only the two continuity rows acquire a time
+term.  Because the sum of the discrete continuity pair reproduces the discrete
+Poisson row exactly, the link quantity
+
+    K = Jn + Jp + eps * dE/dt          (particle + displacement current)
+
+is spatially uniform up to the Newton residual; ``K`` is the current an external
+ammeter sees, and :meth:`DDSolver.total_current_profile` returns it per link.
 """
 
 from __future__ import annotations
@@ -56,21 +73,48 @@ class DDSolver:
     achievable floor is set by the sparse LU solve, not by the discretisation:
     about 3e-9 for a 1601-site junction, which corresponds to a terminal
     current error below 1e-6 A/cm^2 anywhere on the I-V curve.
+
+    Steady mode is the default; :meth:`snapshot` plus :meth:`step` (or the
+    driving loop :meth:`transient`) switch on the time terms.
     """
 
     def __init__(self, device, generation=None, tol: float = 1e-8,
-                 max_newton: int = 80, du_cap: float = 4.0):
+                 max_newton: int = 80, du_cap: float = 4.0, theta: float = 1.0):
         self.dev = device
         self.tol = tol
         self.max_newton = max_newton
         self.du_cap = du_cap
         self.N = device.N
-        gen = np.zeros(device.N) if generation is None else np.asarray(
-            generation(device.x), dtype=float)
-        self.gen_dim = gen / device.Rscale
+        gen = None if generation is None else (
+            generation(device.x) if callable(generation) else generation)
+        self.set_generation(gen)
         # Fixed (bias independent) per-link jump of ln(n_i).  Zero whenever the
         # material model has no band-gap narrowing.
         self._dln_ni = np.log(device.r_ni[1:] / device.r_ni[:-1])
+        # --- transient state (theta scheme) ---------------------------------
+        self.theta = float(theta)     # 1 = backward Euler, 0.5 = Crank-Nicolson
+        self.time = 0.0               # [s] simulated time of the last accepted state
+        self.V_prev = 0.0             # [V] bias the last accepted state solves
+        self._dt = 0.0                # dimensionless step; > 0 means transient mode
+        self._u_prev = None           # previous state vector
+        self._n_prev = None           # its densities and the two old continuity
+        self._p_prev = None           # rows, cached so a step needs no re-evaluation
+        self._cn_prev = None
+        self._cp_prev = None
+
+    # ------------------------------------------------------------- generation
+    def set_generation(self, generation=None) -> None:
+        """Install the external generation field [cm^-3 s^-1] (scalar or per node).
+
+        Changing it between transient steps is how a light pulse is switched off.
+        """
+        if generation is None:
+            gen = np.zeros(self.dev.N)
+        else:
+            gen = np.asarray(generation, dtype=float)
+            if gen.ndim == 0:
+                gen = np.full(self.dev.N, float(gen))
+        self.gen_dim = gen / self.dev.Rscale
 
     # ------------------------------------------------------------------ core
     def _fields(self, u, d):
@@ -130,10 +174,25 @@ class DDSolver:
         F[0] = psi[0] - d.psi_left
         F[N - 1] = psi[N - 1] - (d.psi_right0 + vt)
 
-        # ---- electron continuity:  div Jn + U = 0 --------------------------
-        F[N + 1:2 * N - 1] = (Jn[1:] - Jn[:-1]) / d.hb[1:-1] + U[1:-1]
-        # ---- hole continuity:  div Jp - U = 0 ------------------------------
-        F[2 * N + 1:3 * N - 1] = (Jp[1:] - Jp[:-1]) / d.hb[1:-1] - U[1:-1]
+        # ---- carrier continuity --------------------------------------------
+        transient = self._dt > 0.0
+        th = self.theta if transient else 1.0
+        Cn = (Jn[1:] - Jn[:-1]) / d.hb[1:-1] + U[1:-1]
+        Cp = (Jp[1:] - Jp[:-1]) / d.hb[1:-1] - U[1:-1]
+        if transient:
+            # The theta scheme  (x - x_old)/dt = theta R(new) + (1-theta) R(old)
+            # with R the steady spatial balance.  The electron row carries +div Jn
+            # and the hole row -div Jp, so the two time terms enter with opposite
+            # signs.  Neither interior row mentions V or the generation field
+            # explicitly, which is what lets the rows cached at the previous state
+            # serve as R(old) for whatever bias this step ramps to.
+            inv_dt = 1.0 / self._dt
+            tn = (n[1:-1] - self._n_prev[1:-1]) * inv_dt
+            tp = (p[1:-1] - self._p_prev[1:-1]) * inv_dt
+            Cn = th * Cn + (1.0 - th) * self._cn_prev - tn
+            Cp = th * Cp + (1.0 - th) * self._cp_prev + tp
+        F[N + 1:2 * N - 1] = Cn
+        F[2 * N + 1:3 * N - 1] = Cp
         # Ohmic contacts, written on the dual potentials: pinning phi_n and
         # phi_p together with psi is exactly equivalent to pinning both carrier
         # densities to their equilibrium (Boltzmann) values, but keeps every
@@ -153,10 +212,32 @@ class DDSolver:
                        + np.abs(psi[1:-1] - psi[:-2]) / d.hd[:-1]) / d.hb[1:-1]
                       / d.alpha
                       + n[1:-1] + p[1:-1] + np.abs(d.cdot[1:-1]))
-        s[N + 1:2 * N - 1] = ((np.abs(Jn[1:]) + np.abs(Jn[:-1])) / d.hb[1:-1]
-                              + np.abs(U[1:-1]))
-        s[2 * N + 1:3 * N - 1] = ((np.abs(Jp[1:]) + np.abs(Jp[:-1])) / d.hb[1:-1]
-                                  + np.abs(U[1:-1]))
+        wn = ((np.abs(Jn[1:]) + np.abs(Jn[:-1])) / d.hb[1:-1] + np.abs(U[1:-1]))
+        wp = ((np.abs(Jp[1:]) + np.abs(Jp[:-1])) / d.hb[1:-1] + np.abs(U[1:-1]))
+        if transient:
+            wn = th * wn + (1.0 - th) * np.abs(self._cn_prev) + np.abs(tn)
+            wp = th * wp + (1.0 - th) * np.abs(self._cp_prev) + np.abs(tp)
+        s[N + 1:2 * N - 1] = wn
+        s[2 * N + 1:3 * N - 1] = wp
+        # The floor is absolute - one reference rate - and that is what makes the
+        # steady study robust: the rows that should vanish there vanish exactly
+        # (Scharfetter-Gummel carries no flux at flat quasi-Fermi levels, and
+        # there np - ni^2 is zero too), while the depletion-region rows whose
+        # content is ~1e-11 carry no physics at all.  Making the floor relative
+        # instead asks Newton for a 30 %-of-content cancellation on those rows,
+        # which double precision cannot deliver, and the line search stalls; it
+        # also does not help a slow mode, whose own content vanishes wherever its
+        # shape does.
+        #
+        # The cost is that a transient balanced entirely by recombination at 1/tau
+        # has a whole content of ~1e-9 in these units, so tol = 1e-8 accepts it
+        # untouched and the carriers never move.  That is a tolerance question,
+        # not a weighting one: the stopping measure is absolute, so the tolerance
+        # must come from the rate the chain is meant to resolve.  Case 8 sets
+        # tol = min(1e-8, 1e-3 * lambda_hat * amplitude) per chain and reports the
+        # achieved residual, and the physical acceptance of a transient is carried
+        # by the invariants (uniform total current, exponential fit, dt order),
+        # none of which a loose Newton tolerance can fake.
         np.maximum(s, 1.0, out=s)
         self._s = s
 
@@ -196,6 +277,15 @@ class DDSolver:
         dJp_dphi_L = b * g_p * p[:-1]
         dJp_dphi_R = -b * gm_p * p[1:]
 
+        if transient:
+            # Only the spatial operator is weighted by theta; R(old) is a constant
+            # of the step, and the Poisson / Dirichlet rows are imposed at the new
+            # time untouched.
+            for arr in (dJn_dpsi_L, dJn_dpsi_R, dJn_dphin_L, dJn_dphin_R,
+                        dJp_dpsi_L, dJp_dpsi_R, dJp_dphi_L, dJp_dphi_R,
+                        T_psi, T_phin, T_phip):
+                arr *= th
+
         # ---- electron continuity rows (interior) ---------------------------
         i = np.arange(1, N - 1)
         r = N + i
@@ -207,6 +297,10 @@ class DDSolver:
         add(r, N + i + 1, dJn_dphin_R[1:] * inv)
         add(r, N + i - 1, -dJn_dphin_L[:-1] * inv)
         add(r, 2 * N + i, T_phip[1:-1])
+        if transient:
+            # d(-n/dt)/dpsi = -n/dt and d(-n/dt)/dphi_n = +n/dt (Slotboom chain rule).
+            add(r, i, -n[1:-1] * inv_dt)
+            add(r, N + i, n[1:-1] * inv_dt)
         # Ohmic contact rows: d(phi)/d(phi) = 1.
         add(N, N, 1.0)
         add(2 * N - 1, 2 * N - 1, 1.0)
@@ -221,6 +315,9 @@ class DDSolver:
         add(r, 2 * N + i + 1, dJp_dphi_R[1:] * inv)
         add(r, 2 * N + i - 1, -dJp_dphi_L[:-1] * inv)
         add(r, N + i, -T_phin[1:-1])
+        if transient:
+            add(r, i, -p[1:-1] * inv_dt)
+            add(r, 2 * N + i, p[1:-1] * inv_dt)
         # Ohmic contact rows: d(phi)/d(phi) = 1.
         add(2 * N, 2 * N, 1.0)
         add(3 * N - 1, 3 * N - 1, 1.0)
@@ -303,6 +400,96 @@ class DDSolver:
         u_prev, _, _ = self._advance(u0, 0.0, V)
         return self.newton(V, u_prev)
 
+    # -------------------------------------------------------------- transient
+    def snapshot(self, u: np.ndarray, V: float | None = None) -> np.ndarray:
+        """Make ``u`` the previous state of the theta scheme (at ``self.time``).
+
+        Caches the densities and the two steady continuity rows, which are all a
+        step needs from the past.  ``_dt`` is masked out while reading the rows
+        back, so a snapshot taken in the middle of a schedule is still a *steady*
+        evaluation of the state it stores.
+        """
+        u = np.asarray(u, dtype=float)
+        N = self.N
+        self._u_prev = u.copy()
+        _, _, _, n, p = self._fields(u, self.dev)
+        self._n_prev, self._p_prev = n, p
+        dt_keep, self._dt = self._dt, 0.0
+        try:
+            F = self.residual(u, self.V_prev if V is None else V, want_jac=False)
+        finally:
+            self._dt = dt_keep
+        self._cn_prev = F[N + 1:2 * N - 1].copy()
+        self._cp_prev = F[2 * N + 1:3 * N - 1].copy()
+        self.V_prev = float(self.V_prev if V is None else V)
+        return u
+
+    def step(self, V: float, dt: float, gen=None, u_guess=None,
+             theta: float | None = None):
+        """Advance one theta-scheme step of length ``dt`` [s], ending at bias ``V``.
+
+        Returns ``(u, SolveReport)``; a converged state becomes the new previous
+        state and moves ``self.time`` forward.  ``gen`` (cm^-3 s^-1, scalar or per
+        node) is installed for the *end* of the step, which is what a switched
+        light pulse needs: the Crank-Nicolson offset still reads the field that
+        was active when the previous state was stored.
+        """
+        if self._u_prev is None:
+            raise RuntimeError("no previous state: call snapshot() or transient() first")
+        if dt <= 0.0:
+            raise ValueError("a time step must be positive")
+        if theta is not None:
+            self.theta = float(theta)
+        t_new = self.time + float(dt)
+        self._dt = float(dt) / self.dev.Tscale
+        guess = self._u_prev if u_guess is None else np.asarray(u_guess, dtype=float)
+        if gen is not None:
+            self.set_generation(gen)
+        u, rep = self.newton(float(V), guess)
+        self._dt = 0.0
+        if rep.converged:
+            self.time = t_new
+            self.snapshot(u, V)
+        return u, rep
+
+    def transient(self, u0, times, bias, gen=None, theta: float | None = None):
+        """Integrate over ``times`` [s] from the state ``u0`` at ``times[0]``.
+
+        ``bias`` is a callable ``V(t)`` or an array of the same length as
+        ``times``; ``gen`` is a callable ``G(t)``, an array, or ``None`` to keep
+        whatever field the solver holds.  Returns
+        ``(states, terminal current density [A/cm^2], reports)``.  The current is
+        the displacement-aware one, i.e. what an ammeter in the external circuit
+        reads, not the particle current at one contact.
+        """
+        times = np.asarray(times, dtype=float)
+        if np.any(np.diff(times) <= 0.0):
+            raise ValueError("times must be strictly increasing")
+        b = (np.array([float(bias(float(t))) for t in times], dtype=float)
+             if callable(bias) else np.asarray(bias, dtype=float))
+        if b.shape != times.shape:
+            raise ValueError("bias must match times in length")
+        if theta is not None:
+            self.theta = float(theta)
+        self.snapshot(u0, float(b[0]))
+        states = [np.array(u0, dtype=float, copy=True)]
+        currents = [self.total_current(states[0])]
+        reports = []
+        for k in range(1, len(times)):
+            dt = float(times[k] - times[k - 1])
+            g = None
+            if gen is not None:
+                g = float(gen(float(times[k]))) if callable(gen) else gen[k]
+            u, rep = self.step(float(b[k]), dt, gen=g)
+            if not rep.converged:
+                raise RuntimeError(
+                    f"transient step {k} failed (t={times[k]:.3e} s, V={b[k]:.4f}, "
+                    f"dt={dt:.3e} s, residual {rep.residual:.3e})")
+            states.append(u)
+            currents.append(self.terminal_current(u, states[-2], dt))
+            reports.append(rep)
+        return np.array(states), np.array(currents), reports
+
     # ------------------------------------------------------------------ sweep
     def _advance(self, u, V, target, min_step=1e-13, max_fail=40):
         last = None
@@ -363,6 +550,71 @@ class DDSolver:
     def total_current(self, u: np.ndarray) -> float:
         Jn, Jp = self.currents(u)
         return float(Jn[0] + Jp[0])
+
+    def displacement_current(self, u: np.ndarray, u_prev: np.ndarray,
+                             dt: float) -> np.ndarray:
+        """``eps dE/dt`` on every link [A/cm^2].
+
+        The time derivative is the same backward difference the continuity rows
+        use, which is what makes the sum of the two rows cancel against it.
+        """
+        d = self.dev
+        p_new = np.asarray(u, dtype=float)[:d.N]
+        p_old = np.asarray(u_prev, dtype=float)[:d.N]
+        E_new = -(p_new[1:] - p_new[:-1]) * d.mat.Vt / d.h
+        E_old = -(p_old[1:] - p_old[:-1]) * d.mat.Vt / d.h
+        return d.mat.eps * (E_new - E_old) / float(dt)
+
+    def total_current_profile(self, u, u_prev=None, dt=None, theta=None) -> np.ndarray:
+        """Particle plus displacement current on every link [A/cm^2].
+
+        ``Jn + Jp`` alone is not spatially uniform while the field changes.  The
+        theta-weighted sum returned here is uniform up to the Newton residual,
+        because adding the two discrete continuity rows eliminates SRH and leaves
+        exactly the discrete time derivative of the Poisson row.
+        """
+        Jn, Jp = self.currents(u)
+        if u_prev is None or dt is None:
+            return Jn + Jp
+        th = self.theta if theta is None else float(theta)
+        Jn_o, Jp_o = self.currents(u_prev)
+        return (th * (Jn + Jp) + (1.0 - th) * (Jn_o + Jp_o)
+                + self.displacement_current(u, u_prev, dt))
+
+    def terminal_current(self, u, u_prev=None, dt=None, theta=None) -> float:
+        """Uniform total current [A/cm^2], averaged over the links.
+
+        The average is meaningful only because the profile is flat; the transient
+        checks measure that spread rather than assume it.
+        """
+        return float(np.mean(self.total_current_profile(u, u_prev, dt, theta)))
+
+    def current_uniformity(self, u, u_prev=None, dt=None, theta=None) -> float:
+        """(max - min) of the total-current profile over the terms it cancels.
+
+        This is the discrete charge-conservation invariant.  It sits at the
+        Newton-residual level when the displacement term is present and blows up
+        to O(1) as soon as that term is dropped during a field change.
+
+        The denominator is the sum of the particle and displacement magnitudes,
+        not ``max|K|``: while the field changes those two terms are individually
+        large and their uniform sum is the external current, which for a
+        mirror-symmetric mode (a slab between identical contacts) is exactly
+        zero by symmetry.  Normalising a round-off-sized residual by it would
+        report a correct solve as a failure.  The residual error that Newton
+        leaves in the Poisson row enters the profile amplified by
+        ``hb / dt_hat``, so this measure degrades as ``1 / dt`` -- expected, and
+        the transient checks quote it together with the step size.
+        """
+        K = self.total_current_profile(u, u_prev, dt, theta)
+        Jn, Jp = self.currents(u)
+        scale = float(np.max(np.abs(Jn + Jp)))
+        if u_prev is not None and dt is not None:
+            th = self.theta if theta is None else float(theta)
+            Jn_o, Jp_o = self.currents(u_prev)
+            scale = (th * scale + (1.0 - th) * float(np.max(np.abs(Jn_o + Jp_o)))
+                     + float(np.max(np.abs(self.displacement_current(u, u_prev, dt)))))
+        return float((K.max() - K.min()) / max(scale, 1e-300))
 
     def physical_state(self, u: np.ndarray) -> dict:
         """Dimensional fields for post-processing."""

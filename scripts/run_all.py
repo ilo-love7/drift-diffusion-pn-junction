@@ -5,8 +5,8 @@ Each ``scripts/caseN_*.py`` module exposes ``run() -> dict`` and writes
 key numbers into ``data/summary.json`` and prints one table, so a reviewer can
 reproduce the whole study with a single command.
 
-    python scripts/run_all.py            # all seven cases (~50 s)
-    python scripts/run_all.py --fast     # skip the mesh study and both Sesame runs
+    python scripts/run_all.py            # all eight cases
+    python scripts/run_all.py --fast     # skip the slow ones (mesh, Sesame, transients)
     python scripts/run_all.py --only 2 5 # selected cases
 """
 
@@ -47,8 +47,14 @@ CASES = {
         ["psi_max_abs_diff_V", "density_rel_dev_eq_reverse_max",
          "density_rel_dev_forward_bulk_max", "field_rel_dev_bulk_max",
          "all_gates_passed"]),
+    8: ("case8_slab_time_constants",
+        ["dielectric_rate_rel_error_max", "dielectric_order_dev_theta1.0",
+         "dielectric_order_dev_theta0.5", "plasma_rate_rel_error_max",
+         "uniformity_with_displacement_max", "terminal_current_over_terms_max",
+         "uniformity_ratio_displacement_gain",
+         "chains_with_zero_newton_iterations", "all_gates_passed"]),
 }
-SLOW = {4, 5, 7}
+SLOW = {4, 5, 7, 8}
 
 
 def _flatten(m: dict) -> dict:

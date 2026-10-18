@@ -33,7 +33,12 @@ def graded_mesh(L: float, x_j: float, h_fine: float, h_max: float,
 
 @dataclass
 class Device:
-    """1D abrupt p-n junction between two Ohmic contacts."""
+    """1D abrupt p-n junction between two Ohmic contacts.
+
+    Placing the junction outside the mesh degenerates it to a uniformly doped
+    slab between two identical contacts, which is what the transient
+    time-constant tests need.
+    """
 
     x: np.ndarray                 # site coordinates [cm], ascending
     Nd: float                     # donor density of the n side [cm^-3]
@@ -63,6 +68,11 @@ class Device:
         self.Jscale = Q_E * self.Nref * self.Dref / self.length_scale    # A/cm^2
         self.Rscale = self.Nref * self.Dref / self.length_scale ** 2     # cm^-3 s^-1
         self.alpha = Q_E * self.Nref * self.length_scale ** 2 / (self.mat.eps * Vt)
+        # Diffusive time scale.  Because Jscale / (q Lambda) equals Rscale
+        # identically, measuring time in units of it turns the continuity
+        # equations into  d n_hat / d t_hat = div J_hat + U_hat  with no extra
+        # coefficient, so a transient step only adds (x - x_old) / dt_hat.
+        self.Tscale = self.length_scale ** 2 / self.Dref                 # [s]
 
         in_n = x < self.x_j
         self.nd = np.where(in_n, self.Nd, 0.0) / self.Nref
@@ -79,9 +89,22 @@ class Device:
         # Dirichlet values of the electrostatic potential at the contacts,
         # dimensionless: chosen so that each contact holds its equilibrium
         # majority density while its quasi-Fermi level sits at the voltage
-        # reference.
-        self.psi_left = float(np.log(self.nd[0] / self.r_ni[0]))
-        self.psi_right0 = -float(np.log(self.na[-1] / self.r_ni[-1]))
+        # reference.  Each one is read from the doping *at that contact*, so a
+        # uniformly doped test slab (both contacts on the same side, Vbi = 0)
+        # is describable as well as the two-sided junction.
+        self.psi_left = self._contact_psi(self.nd[0], self.na[0], self.r_ni[0])
+        self.psi_right0 = self._contact_psi(self.nd[-1], self.na[-1], self.r_ni[-1])
+
+    @staticmethod
+    def _contact_psi(nd, na, r_ni) -> float:
+        """Potential that puts the majority density of an Ohmic contact at its
+        equilibrium (Boltzmann) value: ``log(ND/ni)`` on an n side,
+        ``-log(NA/ni)`` on a p side."""
+        if nd > 0.0:
+            return float(np.log(nd / r_ni))
+        if na > 0.0:
+            return float(-np.log(na / r_ni))
+        raise ValueError("an Ohmic contact must sit on a doped region")
 
     # ---------------------------------------------------------------- helpers
     @property
@@ -107,6 +130,14 @@ class Device:
     def initial_state(self, V: float = 0.0) -> np.ndarray:
         """Depletion-approximation initial guess for bias ``V`` [V]."""
         Vt = self.mat.Vt
+        if self.Nd == 0.0 or self.Na == 0.0:
+            # Uniform slab (one of the two dopings is absent, so there is no
+            # junction): the applied bias just tilts the potential linearly
+            # between the two same-type contacts.
+            f = (self.xd - self.xd[0]) / (self.xd[-1] - self.xd[0])
+            u = np.zeros(3 * self.N)
+            u[:self.N] = self.psi_left + f * (self.psi_right0 + V / Vt - self.psi_left)
+            return u
         x_n, x_p, _ = self.depletion_width(V)
         lam = self.length_scale
         x_n, x_p = x_n / lam, x_p / lam
