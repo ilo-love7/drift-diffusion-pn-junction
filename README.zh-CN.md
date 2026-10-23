@@ -82,6 +82,29 @@ python -m pytest -q                    # 113 项测试，≈23 s
 `data/caseN_*.csv`（逐偏压 / 逐节点数据）、`figures/caseN_*.png`（15 张图）、
 `data/summary.json`（含各案例墙钟的汇总）。
 
+## 用途 / 你能用它做什么
+
+六个可直接上手的使用场景，每个都有可运行的入口（纯 CPU、只需 numpy/scipy，无编译链、无外部数据）：
+
+| 用途 | 真实入口（脚本/模块路径） |
+|---|---|
+| **把求解器当库调用**（解单个偏压点、扫 I-V、取有量纲的物理场） | `p5dd.DDSolver.solve_point` / `.iv_sweep` / `.physical_state` / `.currents` · [src/p5dd/solver.py](src/p5dd/solver.py) |
+| **复现三层证据链**（L1 解析不变量 → L2 网格无关性 → L3 第三方交叉对照） | `python scripts/run_all.py` · L1：[scripts/case1_equilibrium.py](scripts/case1_equilibrium.py)、[scripts/case2_forward_iv.py](scripts/case2_forward_iv.py)、[scripts/case3_reverse_cv.py](scripts/case3_reverse_cv.py) · L2：[scripts/case4_mesh_convergence.py](scripts/case4_mesh_convergence.py) · L3：[scripts/case5_sesame_crosscheck.py](scripts/case5_sesame_crosscheck.py)、[scripts/case7_sesame_profiles.py](scripts/case7_sesame_profiles.py) |
+| **单独调用解析参考与后处理**（V_bi、耗尽层、Shockley、C = dQ/dV、Mott–Schottky） | `p5dd.built_in_potential`、`p5dd.depletion`、`p5dd.shockley`、`p5dd.mott_schottky` · [src/p5dd/theory.py](src/p5dd/theory.py)、[src/p5dd/analysis.py](src/p5dd/analysis.py) |
+| **网格收敛研究与基准算例**（201 → 3201 节点，实测观测阶） | [scripts/case4_mesh_convergence.py](scripts/case4_mesh_convergence.py) · [tests/test_mesh_convergence.py](tests/test_mesh_convergence.py) · [data/metrics_case4.json](data/metrics_case4.json) |
+| **复现瞬态 / 开关行为**（介质模与等离子体模、0.60 → −0.60 V 关断） | [scripts/case8_slab_time_constants.py](scripts/case8_slab_time_constants.py) · [scripts/case9_turnoff.py](scripts/case9_turnoff.py) · [src/p5dd/transients.py](src/p5dd/transients.py) |
+| **拿本仓库当参照去验证别人的求解器**（同一套节点数组、同一组输入、逐点偏差已入库） | [reference/PROVENANCE.md](reference/PROVENANCE.md) · [data/case5_sesame_crosscheck.csv](data/case5_sesame_crosscheck.csv) · [data/case7_sesame_profiles.csv](data/case7_sesame_profiles.csv) |
+
+典型用途：① 作为**新漂移-扩散离散格式的对照实现**；② 半导体器件论文的**可复现实验台**
+（一条命令、≈93 s）；③ 数值器件课程的**教学材料**——L1 不变量与 L2 观测阶是读者第一天就能自己量出来的
+两件事；④ 在相信某个第三方 TCAD 在本器件上的数字之前做一次**预检**。
+
+全部可离线复现：`python -m pytest -q`（113 项测试，≈23 s）不需要任何数据集、也不需要编译链——
+`requirements.txt` 只有 numpy + scipy + matplotlib + pytest。Sesame 对照是可选的（副本已 vendored 在
+`reference/`），删掉后套件报告 89 passed / 12 skipped，而跳过一律不计入通过。
+CI 在 Linux 上跑测试套件与九个案例，覆盖 Python 3.10 / 3.12 / 3.13
+（[.github/workflows/ci.yml](.github/workflows/ci.yml)）。
+
 ## 当作库使用
 
 ```python

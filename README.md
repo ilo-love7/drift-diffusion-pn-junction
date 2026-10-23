@@ -84,6 +84,32 @@ Products: `data/metrics_caseN.json` (structured metrics — every number quoted 
 back from these files), `data/caseN_*.csv` (per-bias / per-node data), `figures/caseN_*.png`
 (13 figures), `data/summary.json` (rollup with per-case wall clock).
 
+## What you can do with this solver
+
+Six concrete jobs, each with a runnable entry point (CPU only, numpy/scipy only, no build chain,
+no external data):
+
+| Job | Entry point |
+|---|---|
+| **Call the solver as a library** (solve one bias point, sweep an I-V curve, read the dimensional physical state) | `p5dd.DDSolver.solve_point` / `.iv_sweep` / `.physical_state` / `.currents` · [src/p5dd/solver.py](src/p5dd/solver.py) |
+| **Reproduce the three evidence layers** (L1 analytic invariants → L2 mesh independence → L3 third-party cross-check) | `python scripts/run_all.py` · L1: [scripts/case1_equilibrium.py](scripts/case1_equilibrium.py), [scripts/case2_forward_iv.py](scripts/case2_forward_iv.py), [scripts/case3_reverse_cv.py](scripts/case3_reverse_cv.py) · L2: [scripts/case4_mesh_convergence.py](scripts/case4_mesh_convergence.py) · L3: [scripts/case5_sesame_crosscheck.py](scripts/case5_sesame_crosscheck.py), [scripts/case7_sesame_profiles.py](scripts/case7_sesame_profiles.py) |
+| **Use the analytic references and post-processing on their own** (V_bi, depletion, Shockley, C = dQ/dV, Mott–Schottky) | `p5dd.built_in_potential`, `p5dd.depletion`, `p5dd.shockley`, `p5dd.mott_schottky` · [src/p5dd/theory.py](src/p5dd/theory.py), [src/p5dd/analysis.py](src/p5dd/analysis.py) |
+| **Study mesh convergence and benchmark this device** (201 → 3201 nodes, observed order) | [scripts/case4_mesh_convergence.py](scripts/case4_mesh_convergence.py) · [tests/test_mesh_convergence.py](tests/test_mesh_convergence.py) · [data/metrics_case4.json](data/metrics_case4.json) |
+| **Reproduce the transient / switching behaviour** (dielectric and plasma modes, a 0.60 → −0.60 V turn-off) | [scripts/case8_slab_time_constants.py](scripts/case8_slab_time_constants.py) · [scripts/case9_turnoff.py](scripts/case9_turnoff.py) · [src/p5dd/transients.py](src/p5dd/transients.py) |
+| **Validate somebody else's solver against this one** (same node array, same inputs, per-point deviations published) | [reference/PROVENANCE.md](reference/PROVENANCE.md) · [data/case5_sesame_crosscheck.csv](data/case5_sesame_crosscheck.csv) · [data/case7_sesame_profiles.csv](data/case7_sesame_profiles.csv) |
+
+Typical uses: (1) a **reference implementation** to check a new drift-diffusion discretisation
+against; (2) a **reproducibility harness** for a semiconductor-device paper — one command,
+≈93 s; (3) **teaching material** for a numerical-devices course, since the L1 invariants and the
+L2 observed order are the two things a reader can measure on day one; (4) a **pre-flight check**
+before trusting a third-party TCAD number on this device.
+
+Everything runs offline: `python -m pytest -q` (113 tests, ≈23 s) needs no dataset and no build
+chain — `requirements.txt` is numpy + scipy + matplotlib + pytest. The Sesame cross-check is
+optional (its copy is vendored under `reference/`); without it the suite reports 89 passed /
+12 skipped, and skips are never counted as passes. CI runs the test suite and all nine cases on
+Python 3.10 / 3.12 / 3.13 on Linux ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+
 ## Using the library
 
 ```python
