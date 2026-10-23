@@ -102,7 +102,7 @@ python -m pytest -q                    # 118 项测试，≈23 s
 全部可离线复现：`python -m pytest -q`（118 项测试，≈23 s）不需要任何数据集、也不需要编译链——
 `requirements.txt` 只有 numpy + scipy + matplotlib + pytest。Sesame 对照是可选的（副本已 vendored 在
 `reference/`），删掉后 12 项测试跳过，而跳过一律不计入通过。
-CI 在 Linux 上跑测试套件与九个案例，覆盖 Python 3.10 / 3.12 / 3.13
+CI 在 Linux 与 Windows 上跑测试套件与九个案例，覆盖 Python 3.10 / 3.12 / 3.13
 （[.github/workflows/ci.yml](.github/workflows/ci.yml)）。
 
 ## 当作库使用

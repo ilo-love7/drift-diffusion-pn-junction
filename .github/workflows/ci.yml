@@ -22,3 +22,28 @@ jobs:
         run: python -m pytest -q
       - name: verification cases (writes data/ and figures/)
         run: python scripts/run_all.py
+
+  # Windows leg：新增 job，上面的 `suite` job（名字与内容）一个字未动。
+  # 复用同一组 python-version 矩阵，所以总数从 3 个 job 变 6 个。
+  # MPLBACKEND=Agg：Windows runner 无显示设备，matplotlib 默认的 TkAgg 会失败；
+  # .gitattributes 已经把 reference/**、data/**、figures/** 钉成 `-text`，
+  # 因此那份 SHA-256 完整性摘要与已提交产物在 Windows 检出后依旧逐字节一致，
+  # 不需要 bash，也不需要在 checkout 后额外做换行归一化。
+  suite-windows:
+    runs-on: windows-latest
+    env:
+      MPLBACKEND: Agg
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -r requirements.txt
+      - name: solver tests
+        run: python -m pytest -q
+      - name: verification cases (writes data/ and figures/)
+        run: python scripts/run_all.py

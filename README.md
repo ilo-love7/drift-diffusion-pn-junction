@@ -108,7 +108,7 @@ Everything runs offline: `python -m pytest -q` (118 tests, ≈23 s) needs no dat
 chain — `requirements.txt` is numpy + scipy + matplotlib + pytest. The Sesame cross-check is
 optional (its copy is vendored under `reference/`); without it 12 tests skip, and skips are never
 counted as passes. CI runs the test suite and all nine cases on
-Python 3.10 / 3.12 / 3.13 on Linux ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+Python 3.10 / 3.12 / 3.13 on **Linux and Windows** ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
 
 ## Using the library
 
