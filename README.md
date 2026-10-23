@@ -22,7 +22,7 @@ continuation), verified against closed-form semiconductor theory **and** against
 independent third-party device simulator (NIST Sesame 2.0) — numpy/scipy only, no GPU, no
 build chain, whole verification suite reproducible in about 50 seconds.
 
-**113 collected / 113 passed / 0 skipped** (≈23 s) · 9 verification cases (≈93 s) · green on CI for Python 3.10 / 3.12 / 3.13 · MIT (the vendored Sesame part stays 3-clause BSD)
+**118 collected / 118 passed / 0 skipped** (≈23 s) · 9 verification cases (≈93 s) · green on CI for Python 3.10 / 3.12 / 3.13 · MIT (the vendored Sesame part stays 3-clause BSD)
 
 ---
 
@@ -39,7 +39,7 @@ build chain, whole verification suite reproducible in about 50 seconds.
 | 7 | Cross-check of the **internal profiles** vs **NIST Sesame 2.0** (same node array, same inputs, 4 biases: −0.60 / 0 / 0.30 / 0.60 V) | max potential difference **1.29e-8 V**; max relative density deviation **7.91e-9** at equilibrium and reverse bias; bulk-region field deviation **1.50e-7**. The two potentials differ by the constant **−4.615497472 V**, which matches the analytic intrinsic-level reference **bit for bit** (error 0.0) and does not drift with bias (spread 0.0). Forward density deviation 1.48e-3, peaking *at the contact* (x = 119.6 µm); refining the mesh to 1601 nodes makes it larger, not smaller (8.50e-4 → 1.76e-3) — a contact/scheme premise difference, not a resolution limit | ✅ |
 | 8 | **Transient slab: two analytic time constants + integrator order** (the exam the solver now has to pass after gaining a time term) | measured relative error **4.0e-7 / 2.0e-5** for the dielectric-relaxation rate σ/ε (τ = 47.9 fs) and the plasma-mode rate 1/τ + D_a k² (τ = 9.92 ns) — five orders of magnitude apart, each with its own step size and tolerance (tolerances taken from a scan, not from taste); measured θ-scheme convergence orders **0.98 (BE, theory 1) / 2.01 (CN, theory 2)**; single-exponential decay (fit rms ≤ 2.8e-6) with the extracted rate insensitive to fit window, perturbation amplitude and tolerance; an injection scan bounds the linear regime (rate/λ > 0.99999 up to Δn = 1e12 cm⁻³; ignoring the ambipolar diffusion term would err by 8.5e-3, above the 5e-3 gate — **it cannot be dropped**); displacement-current invariant: particle current alone is non-uniform to 1.0000264, adding ε dE/dt brings it to 5.29e-5 (**×1.9e4**) and the two terms sum to nothing by mirror symmetry (4.1e-13) | ✅ (all 23 gates pass) |
 | 9 | **Junction turn-off: 0.60 V → −0.60 V voltage step** (switching behaviour) | the displacement current makes the total current uniform over the extraction plateau to **6.4e-10** (particle current alone: 0.445 — a **7e8×** improvement); carrier bookkeeping closes to **8.8e-10 / 1.0e-10**; the long chain lands on the cold steady solve (potential 6.9e-8 V, excess sheet charge 8.1e-5); the plateau matches the **parameter-free** forward sheet-conductance prediction to **1.2%**; extracted charge converges at temporal order **1.00** and spatial order **2.08**; all 14 gates pass | ✅ (all 14 gates pass) |
-| 10 | Unit tests | **113 collected / 113 passed / 0 skipped**, incl. analytic-vs-finite-difference Jacobian, a band-gap-narrowing generalised-SG regression test, an exact-degeneracy assertion when narrowing is absent, 8 Sesame profile-agreement assertions and transient modal / time-discretisation-map tests | ✅ |
+| 10 | Unit tests | **118 collected / 118 passed / 0 skipped**, incl. analytic-vs-finite-difference Jacobian, a band-gap-narrowing generalised-SG regression test, an exact-degeneracy assertion when narrowing is absent, 8 Sesame profile-agreement assertions and transient modal / time-discretisation-map tests | ✅ |
 | 11 | Reproduction cost | all nine cases **≈93 s** (≈9 s with `--fast`); every product is a local CSV/PNG/JSON | ✅ |
 
 Scale check, Si p-n junction (N_D = 1e17, N_A = 1e16 cm⁻³, 300 K):
@@ -73,7 +73,7 @@ pip install -r requirements.txt
 python scripts/run_all.py              # all nine verification cases, ≈93 s -> data/ figures/ + summary table
 python scripts/run_all.py --fast       # skip the mesh study, the Sesame cross-checks and the transient slab, ≈9 s
 python scripts/run_all.py --only 2 5   # selected cases only
-python -m pytest -q                    # 113 tests, ≈23 s
+python -m pytest -q                    # 118 tests, ≈23 s
 ```
 
 Each case also runs standalone and prints its metrics, e.g. `python scripts/case1_equilibrium.py`.
@@ -104,10 +104,10 @@ against; (2) a **reproducibility harness** for a semiconductor-device paper — 
 L2 observed order are the two things a reader can measure on day one; (4) a **pre-flight check**
 before trusting a third-party TCAD number on this device.
 
-Everything runs offline: `python -m pytest -q` (113 tests, ≈23 s) needs no dataset and no build
+Everything runs offline: `python -m pytest -q` (118 tests, ≈23 s) needs no dataset and no build
 chain — `requirements.txt` is numpy + scipy + matplotlib + pytest. The Sesame cross-check is
-optional (its copy is vendored under `reference/`); without it the suite reports 89 passed /
-12 skipped, and skips are never counted as passes. CI runs the test suite and all nine cases on
+optional (its copy is vendored under `reference/`); without it 12 tests skip, and skips are never
+counted as passes. CI runs the test suite and all nine cases on
 Python 3.10 / 3.12 / 3.13 on Linux ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
 
 ## Using the library
@@ -286,6 +286,45 @@ cd reference/sesame && find . -name "*.py" -type f | sort | xargs cat | sha256su
 
 ---
 
+## Verifying another solver: the reusable three-layer API
+
+The three evidence layers above are also importable as one structured report, so the same
+declared criteria can be pointed at a **foreign** solver without copying this repository's
+numbers into your own code. The API only re-runs the case scripts that already exist
+(`scripts/case1_equilibrium.py::run`, `scripts/case4_mesh_convergence.py::run`,
+`scripts/case5_sesame_crosscheck.py::run`, `scripts/case7_sesame_profiles.py::run`) or reads the
+products they committed under `data/`: it adds no new metric and no new threshold.
+
+```python
+import sys; sys.path.insert(0, "src")
+from p5dd.verify import evaluate_layer, verify_all
+
+report = verify_all(source="products")   # fast, offline: reads data/metrics_caseN.json
+print(report.format_table())             # one row per layer + the deliverable-level gate
+print(report.status)                     # pass / fail / external consistency unproven
+print(report.layer("L1").checks[0].to_dict())
+
+# point the same declared gates at your own solver's numbers (L1 shown here)
+mine = {"current_abs_A_cm2": 3.1e-24, "quasi_fermi_flatness_V": 4.0e-15,
+        "max_np_over_ni2_deviation": 9.0e-14, "Vbi_rel_error": 1.0e-12,
+        "W_rel_error": 2.4e-2, "Emax_rel_error": 2.5e-2, "residual_absolute": 6.0e-9}
+layer = evaluate_layer("L1", mine)
+print(layer.status, layer.failed)
+```
+
+`verify_all(source="cases")` re-runs the cases instead of reading the products (the full suite,
+writing the same `data/` and `figures/` paths as always). Every layer in the report carries the
+wording of what it cannot show, taken from the table above: L1 certifies the discretisation and
+**not** the physics model chosen, L2 does not show that the converged limit is the right answer,
+and L3 is an independent *code*, not an independent validation chain, with zero power over model
+completeness. A layer that could not be run is reported as `not_executed` with `passed` still
+`False`; a metric missing from a submitted report fails its check instead of passing silently;
+the thresholds come from this repository's declared gates, so a submitted report cannot widen
+them. Passing all three layers therefore means "this discretisation met these criteria on this
+device" - it does not shrink the scope boundary below.
+
+---
+
 ## Physics findings from this device (each with its applicability limit)
 
 Wording rule: **verified** = a measured value exists in `data/metrics_caseN.json`;
@@ -362,8 +401,9 @@ src/p5dd/          constants · bernoulli · material (Arora / Slotboom / SRH) �
                    adapters) · solver (residual + analytic Jacobian + damped Newton +
                    continuation) · theory (V_bi, depletion, Shockley, ideality) · analysis
                    (peak field, depletion charge, C = dQ/dV, Mott-Schottky) · viz (Agg styling)
+                   verify (reusable L1/L2/L3 reports for third-party solvers)
 scripts/           case1..case9 + run_all.py
-tests/             113 tests, session-scoped solved fixtures
+tests/             118 tests, session-scoped solved fixtures
 reports/           technical-report.md · acceptance-checklist.md (both in Chinese)
 data/ figures/     committed metrics, per-point CSV, 15 PNG
 reference/         vendored Sesame 2.0 (trimmed; retained files unmodified) + PROVENANCE.md

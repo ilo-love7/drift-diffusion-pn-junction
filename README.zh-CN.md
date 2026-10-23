@@ -21,7 +21,7 @@
 **第三方器件模拟器 NIST Sesame 2.0**（L3）。只用 numpy/scipy，无 GPU、无编译链，
 整套验证本地一条命令约 90 秒复现。
 
-**113 collected / 113 passed / 0 skipped**（≈23 s）· 九个验证案例（≈93 s）· Python 3.10 / 3.12 / 3.13 全部在 CI 上通过 · MIT（其中 vendored Sesame 部分仍为 3-clause BSD）
+**118 collected / 118 passed / 0 skipped**（≈23 s）· 九个验证案例（≈93 s）· Python 3.10 / 3.12 / 3.13 全部在 CI 上通过 · MIT（其中 vendored Sesame 部分仍为 3-clause BSD）
 
 ---
 
@@ -38,7 +38,7 @@
 | 7 | 与 **NIST Sesame 2.0** 的**内部剖面**对照（同一网格、同一输入，4 个偏压点：−0.60 / 0 / 0.30 / 0.60 V） | 电位最大差 **1.29e-8 V**；平衡/反偏密度最大相对偏差 **7.91e-9**；体区电场相对偏差 **1.50e-7**。两码电位零点相差一个常数 **−4.615497472 V**，与解析的"本征能级参考"预测**逐位相同**（误差 0.0）且随偏压不漂移（spread 0.0）。正偏密度偏差 1.48e-3，最大点落在**接触处**（x = 119.6 µm），网格加密到 1601 节点后不减反增（8.50e-4 → 1.76e-3）——是接触/格式前提之差，不是分辨率不足 | ✅ |
 | 8 | **瞬态 slab：两个解析时间常数 + 积分器阶数**（求解器新增时间项后的必答题） | 介质松弛模率 σ/ε（τ=47.9 fs）与等离子体模率 1/τ+D_a k²（τ=9.92 ns）实测相对误差 **4.0e-7 / 2.0e-5**——两率差五个数量级，各自独立步长与容差（容差取自扫描而非取值偏好）；θ 格式收敛阶实测 **0.98（BE，理论 1）/ 2.01（CN，理论 2）**；单指数衰减（fit rms ≤ 2.8e-6），速率不随拟合窗口/扰动幅度/容差漂移；注入扫描定位线性区边界（Δn ≤ 1e12 cm⁻³ 时 rate/λ > 0.99999；忽略双极扩散项会犯 8.5e-3 的错，高于 5e-3 门禁——**该不可忽略**）；位移电流不变量：仅粒子电流最大不均匀度 1.0000264，加 ε dE/dt 后降至 5.29e-5（**×1.9e4**），两项之和按镜像对称严格消失（4.1e-13） | ✅（23 项门禁全过） |
 | 9 | **结关断瞬态：0.60 V → −0.60 V 电压阶跃**（开关行为） | 位移电流让总电流在提取平台期空间均匀度到 **6.4e-10**（只算粒子电流是 0.445，改善 **7e8 倍**）；载流子记账闭合 **8.8e-10 / 1.0e-10**；长链落到冷稳态解（电位 6.9e-8 V、过剩薄层电荷 8.1e-5）；提取平台对前向片电导的**零参数**预测吻合 **1.2%**；提取电荷时间阶 **1.00**、空间阶 **2.08**；14 项门禁全过 | ✅（14 项门禁全过） |
-| 10 | 单元测试 | **113 collected / 113 passed / 0 skipped**，含解析 vs 有限差分雅可比、带隙窄化下的广义 SG 回归测试、无窄化时的严格退化断言、8 项 Sesame 剖面对照断言与瞬态模态/时间离散映射测试 | ✅ |
+| 10 | 单元测试 | **118 collected / 118 passed / 0 skipped**，含解析 vs 有限差分雅可比、带隙窄化下的广义 SG 回归测试、无窄化时的严格退化断言、8 项 Sesame 剖面对照断言与瞬态模态/时间离散映射测试 | ✅ |
 | 11 | 复现成本 | 九案例 **≈93 s**（`--fast` ≈9 s）；产物全部是本地 CSV/PNG/JSON | ✅ |
 
 尺度校核（Si p-n 结，N_D = 1e17、N_A = 1e16 cm⁻³，300 K）：
@@ -71,7 +71,7 @@ pip install -r requirements.txt
 python scripts/run_all.py              # 九个案例全跑，≈93 s -> data/ figures/ + 汇总表
 python scripts/run_all.py --fast       # 跳过网格研究、Sesame 对照与瞬态 slab，≈9 s
 python scripts/run_all.py --only 2 5   # 只跑指定案例
-python -m pytest -q                    # 113 项测试，≈23 s
+python -m pytest -q                    # 118 项测试，≈23 s
 ```
 
 每个案例也能单独运行并打印自己的指标，例如 `python scripts/case1_equilibrium.py`。
@@ -99,9 +99,9 @@ python -m pytest -q                    # 113 项测试，≈23 s
 （一条命令、≈93 s）；③ 数值器件课程的**教学材料**——L1 不变量与 L2 观测阶是读者第一天就能自己量出来的
 两件事；④ 在相信某个第三方 TCAD 在本器件上的数字之前做一次**预检**。
 
-全部可离线复现：`python -m pytest -q`（113 项测试，≈23 s）不需要任何数据集、也不需要编译链——
+全部可离线复现：`python -m pytest -q`（118 项测试，≈23 s）不需要任何数据集、也不需要编译链——
 `requirements.txt` 只有 numpy + scipy + matplotlib + pytest。Sesame 对照是可选的（副本已 vendored 在
-`reference/`），删掉后套件报告 89 passed / 12 skipped，而跳过一律不计入通过。
+`reference/`），删掉后 12 项测试跳过，而跳过一律不计入通过。
 CI 在 Linux 上跑测试套件与九个案例，覆盖 Python 3.10 / 3.12 / 3.13
 （[.github/workflows/ci.yml](.github/workflows/ci.yml)）。
 
@@ -256,6 +256,40 @@ cd reference/sesame && find . -name "*.py" -type f | sort | xargs cat | sha256su
 
 ---
 
+## 用它验证别人的求解器：可复用的三层验证 API
+
+上面那三层证据同样可以导出成一份**结构化报告**，把这套已声明的判据直接指向**别人的**求解器，
+而不必把你自己的数字抄进本仓库的代码里。该 API 只复用既有的 case 脚本
+（`scripts/case1_equilibrium.py::run`、`scripts/case4_mesh_convergence.py::run`、
+`scripts/case5_sesame_crosscheck.py::run`、`scripts/case7_sesame_profiles.py::run`），
+或直接读它们已入库的 `data/metrics_caseN.json` 产物：不新增任何指标、也不新增任何阈值。
+
+```python
+import sys; sys.path.insert(0, "src")
+from p5dd.verify import evaluate_layer, verify_all
+
+report = verify_all(source="products")   # 快、离线：只读 data/metrics_caseN.json
+print(report.format_table())             # 每层一行 + 交付物级闸门
+print(report.status)                     # pass / fail / external consistency unproven
+print(report.layer("L1").checks[0].to_dict())
+
+# 把同一套已声明的判据指向你自己的求解器（这里以 L1 为例）
+mine = {"current_abs_A_cm2": 3.1e-24, "quasi_fermi_flatness_V": 4.0e-15,
+        "max_np_over_ni2_deviation": 9.0e-14, "Vbi_rel_error": 1.0e-12,
+        "W_rel_error": 2.4e-2, "Emax_rel_error": 2.5e-2, "residual_absolute": 6.0e-9}
+layer = evaluate_layer("L1", mine)
+print(layer.status, layer.failed)
+```
+
+`verify_all(source="cases")` 则改为实跑既有案例（全量约 90 s，产物路径与往常完全一致）。
+报告里每一层都带着"它不能证明什么"的原文：L1 认证的是离散格式而**不是**你选的物理模型，
+L2 不能说明收敛极限就是*正确*答案，L3 只是独立**代码**、不是独立验证链，对模型完备性零效力。
+没跑成的层标记为 `not_executed` 且 `passed` 恒为 `False`；提交的报告里缺指标时该判据失败而不是静默
+通过；阈值取自本仓库已声明的判据，提交的报告无法把闸门放宽。因此"三层全过"只意味着"本器件上
+这套离散格式满足了这些判据"，并不会缩小下面的范围边界。
+
+---
+
 ## 本器件给出的物理结论（每条都带适用边界）
 
 措辞规则：**已验证** = `data/metrics_caseN.json` 里有实测值；
@@ -322,8 +356,9 @@ src/p5dd/          constants · bernoulli · material（Arora / Slotboom / SRH�
                    solver（残差 + 解析雅可比 + 阻尼 Newton + 延拓）· theory（V_bi、耗尽、
                    Shockley、理想因子）· analysis（峰值场、耗尽电荷、C = dQ/dV、
                    Mott-Schottky）· viz（Agg 样式）
+                   verify：L1/L2/L3 结构化报告，供第三方求解器复用（p5dd.verify）
 scripts/           case1..case9 + run_all.py
-tests/             113 项测试，session 级已求解 fixture
+tests/             118 项测试，session 级已求解 fixture
 reports/           technical-report.md · acceptance-checklist.md（均为中文）
 data/ figures/     入库的指标、逐点 CSV、15 张 PNG
 reference/         vendored Sesame 2.0（已裁剪；保留文件未改动）+ PROVENANCE.md
